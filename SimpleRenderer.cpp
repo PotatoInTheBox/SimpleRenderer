@@ -20,6 +20,7 @@
 //   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
 
 #include "raylib.h"
+#include "Math.h"
 #include <vector>
 #include <array>
 #include <algorithm> // for std::fill
@@ -53,8 +54,10 @@ std::vector<std::array<int, 3>> cubeTriangles = {
 };
 
 int main() {
-    int WINDOW_WIDTH = 800;
-    int WINDOW_HEIGHT = 600;
+    /*int WINDOW_WIDTH = 800;
+    int WINDOW_HEIGHT = 600;*/
+    int WINDOW_WIDTH = 3000;
+    int WINDOW_HEIGHT = 2000;
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Hello Raylib in Visual Studio");
 
     // CPU-side buffers
@@ -74,9 +77,13 @@ int main() {
     img.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
 
     Texture2D screenTex = LoadTextureFromImage(img);
+    // What meth is chatgpt cooking?!?! I can't unload the img pointer because
+    // rgbBuffer.data() resides in our image and we plan to access it later.
+    // Plus, it seems RayLib doesn't like trying to deallocate it for some reason.
     //UnloadImage(img); // texture now owns GPU memory
 
-    const float scale = 200.0f;   // scale factor
+    //const float scale = 200.0f;   // scale factor
+    const float scale = WINDOW_HEIGHT / 2.0f;   // scale factor
     const int offsetX = WINDOW_WIDTH / 2;
     const int offsetY = WINDOW_HEIGHT / 2;
 
@@ -89,17 +96,18 @@ int main() {
     float ax = 0.0f;
     float ay = 0.0f;
     float az = 0.0f;
-    const float speed = 0.01f; // amount to change per frame
+    const float speed = 5.0f; // amount to change per frame
     
 
     while (!WindowShouldClose()) {
+        float dt = GetFrameTime(); // seconds between frames
 
-        if (IsKeyDown(KEY_LEFT))  ax -= speed;
-        if (IsKeyDown(KEY_RIGHT)) ax += speed;
-        if (IsKeyDown(KEY_UP))    ay -= speed;
-        if (IsKeyDown(KEY_DOWN))  ay += speed;
-        if (IsKeyDown(KEY_S))     az -= speed;
-        if (IsKeyDown(KEY_W))     az += speed;
+        if (IsKeyDown(KEY_LEFT))  ax -= speed * dt;
+        if (IsKeyDown(KEY_RIGHT)) ax += speed * dt;
+        if (IsKeyDown(KEY_UP))    ay -= speed * dt;
+        if (IsKeyDown(KEY_DOWN))  ay += speed * dt;
+        if (IsKeyDown(KEY_S))     az -= speed * dt;
+        if (IsKeyDown(KEY_W))     az += speed * dt;
 
         // Example: draw a gradient in CPU buffers
         for (int y = 0; y < WINDOW_HEIGHT; y++) {
@@ -123,11 +131,11 @@ int main() {
         DrawTexture(screenTex, 0, 0, WHITE);
 
         // Loop through triangles
-        int loop_count = 0;
+        float loop_count = 0.0f;
         for (auto& tri : cubeTriangles) {
-            if (loop_count * 500 > counter)
+            if (static_cast<int>(loop_count) * 500 > counter)
                 break;
-            loop_count += 1;
+            loop_count += 1.0f * dt;
             for (int i = 0; i < 3; i++) {
                 int idx0 = tri[i];
                 int idx1 = tri[(i + 1) % 3]; // next vertex to form a line
