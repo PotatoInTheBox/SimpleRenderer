@@ -24,40 +24,35 @@
 #include <vector>
 #include <array>
 #include <algorithm> // for std::fill
+#include <string>
 
 // Cube vertices (x, y, z)
-std::vector<std::array<float, 3>> cubeVertices = {
-    {-0.5f, -0.5f, -0.5f}, // 0
-    { 0.5f, -0.5f, -0.5f}, // 1
-    { 0.5f,  0.5f, -0.5f}, // 2
-    {-0.5f,  0.5f, -0.5f}, // 3
-    {-0.5f, -0.5f,  0.5f}, // 4
-    { 0.5f, -0.5f,  0.5f}, // 5
-    { 0.5f,  0.5f,  0.5f}, // 6
-    {-0.5f,  0.5f,  0.5f}  // 7
+std::vector<Vec4> cubeVertices = {
+	{-0.5f, -0.5f, -0.5f, 1.0f}, // 0
+	{ 0.5f, -0.5f, -0.5f, 1.0f}, // 1
+	{ 0.5f,  0.5f, -0.5f, 1.0f}, // 2
+	{-0.5f,  0.5f, -0.5f, 1.0f}, // 3
+	{-0.5f, -0.5f,  0.5f, 1.0f}, // 4
+	{ 0.5f, -0.5f,  0.5f, 1.0f}, // 5
+	{ 0.5f,  0.5f,  0.5f, 1.0f}, // 6
+	{-0.5f,  0.5f,  0.5f, 1.0f}  // 7
 };
 
 // Cube faces (triangles, each 3 indices)
 std::vector<std::array<int, 3>> cubeTriangles = {
-    // Front face
-    {0, 1, 2}, {0, 2, 3},
-    // Back face
-    {5, 4, 7}, {5, 7, 6},
-    // Left face
-    {4, 0, 3}, {4, 3, 7},
-    // Right face
-    {1, 5, 6}, {1, 6, 2},
-    // Top face
-    {3, 2, 6}, {3, 6, 7},
-    // Bottom face
-    {4, 5, 1}, {4, 1, 0}
+	{0, 1, 2}, {0, 2, 3},  // Front
+	{5, 4, 7}, {5, 7, 6},  // Back
+	{4, 0, 3}, {4, 3, 7},  // Left
+	{1, 5, 6}, {1, 6, 2},  // Right
+	{3, 2, 6}, {3, 6, 7},  // Top
+	{4, 5, 1}, {4, 1, 0}   // Bottom
 };
 
 int main() {
     /*int WINDOW_WIDTH = 800;
     int WINDOW_HEIGHT = 600;*/
-    int WINDOW_WIDTH = 3000;
-    int WINDOW_HEIGHT = 2000;
+    int WINDOW_WIDTH = 1920;
+    int WINDOW_HEIGHT = 1080;
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Hello Raylib in Visual Studio");
 
     // CPU-side buffers
@@ -82,8 +77,6 @@ int main() {
     // Plus, it seems RayLib doesn't like trying to deallocate it for some reason.
     //UnloadImage(img); // texture now owns GPU memory
 
-    //const float scale = 200.0f;   // scale factor
-    const float scale = WINDOW_HEIGHT / 2.0f;   // scale factor
     const int offsetX = WINDOW_WIDTH / 2;
     const int offsetY = WINDOW_HEIGHT / 2;
 
@@ -102,12 +95,14 @@ int main() {
     while (!WindowShouldClose()) {
         float dt = GetFrameTime(); // seconds between frames
 
-        if (IsKeyDown(KEY_LEFT))  ax -= speed * dt;
-        if (IsKeyDown(KEY_RIGHT)) ax += speed * dt;
-        if (IsKeyDown(KEY_UP))    ay -= speed * dt;
-        if (IsKeyDown(KEY_DOWN))  ay += speed * dt;
+        if (IsKeyDown(KEY_LEFT))  ax += speed * dt;
+        if (IsKeyDown(KEY_RIGHT)) ax -= speed * dt;
+        if (IsKeyDown(KEY_UP))    ay += speed * dt;
+        if (IsKeyDown(KEY_DOWN))  ay -= speed * dt;
         if (IsKeyDown(KEY_S))     az -= speed * dt;
         if (IsKeyDown(KEY_W))     az += speed * dt;
+
+		
 
         // Example: draw a gradient in CPU buffers
         for (int y = 0; y < WINDOW_HEIGHT; y++) {
@@ -130,6 +125,33 @@ int main() {
         ClearBackground(BLACK);
         DrawTexture(screenTex, 0, 0, WHITE);
 
+		// I want to make a movement matrix.
+		// This will be our world matrix. Basically telling us where it should
+		// go in the world
+
+		Mat4 move_matrix = Mat4::translation(ax, ay, az + 8.0f);
+		// Now I want to make a view matrix. Which is basically telling us where
+		// the camera is (for now it doesn't exist because the camera is implied
+		// to be at 0,0 facing towards positive z)
+		Mat4 viewMatrix = Mat4::identity(); // simple camera at origin
+		
+		// Now I want to make the perspective matrix. Since it gets messy I'll
+		// just call a helper function to generate it.
+		Mat4 perspectiveMatrix = Mat4::perspective(90.0f, WINDOW_WIDTH / (WINDOW_HEIGHT * 1.0f), 0.01f, 1000.0f);
+
+		Mat4 mvpMatrix = perspectiveMatrix * viewMatrix * move_matrix;
+		//Mat4 mvpMatrix = move_matrix;
+
+		std::vector<Vec4> viewSpaceVertices;
+		viewSpaceVertices.reserve(cubeVertices.size());
+
+		// apply the matrix transformation to all vertices
+		for (auto& vert : cubeVertices) {
+			Vec4 clip = mvpMatrix * vert;
+			Vec4 ndc = { clip.x / clip.w, clip.y / clip.w, clip.z / clip.w, 1.0f };
+			viewSpaceVertices.push_back(ndc);
+		}
+
         // Loop through triangles
         float loop_count = 0.0f;
         for (auto& tri : cubeTriangles) {
@@ -144,43 +166,44 @@ int main() {
                 // The biggest consequence is values from 1.0 to 0.0 actually get larger
                 // since our division is actually making it bigger now. At near 0.0 it blows
                 // up. At exactly 0.0 we just straight up are doing division by 0.
-                float z0f = cubeVertices[idx0][2];
-                float z1f = cubeVertices[idx1][2];
+                float z0f = viewSpaceVertices[idx0].z;
+                float z1f = viewSpaceVertices[idx1].z;
 
-                z0f += 2.0f;
-                z1f += 2.0f;
+                //z0f += 2.0f;
+                //z1f += 2.0f;
                 
                 // We do a very primitive perspective divide here (positive z is away from camera)
                 // If we divide x and y by z we effectively make that point further towards the horizon.
-                float x0f = cubeVertices[idx0][0];
-                float y0f = cubeVertices[idx0][1];
-                float x1f = cubeVertices[idx1][0];
-                float y1f = cubeVertices[idx1][1];
+                float x0f = viewSpaceVertices[idx0].x;
+                float y0f = viewSpaceVertices[idx0].y;
+                float x1f = viewSpaceVertices[idx1].x;
+                float y1f = viewSpaceVertices[idx1].y;
 
                 // apply simple movement
-                x0f += ax;
+                /*x0f += ax;
                 y0f += ay;
                 x1f += ax;
                 y1f += ay;
                 z0f += az;
-                z1f += az;
+                z1f += az;*/
 
                 // Perspective divide!
-                x0f /= z0f;
+                /*x0f /= z0f;
                 y0f /= z0f;
                 x1f /= z1f;
-                y1f /= z1f;
+                y1f /= z1f;*/
 
                 // Scale and offset to center of screen
-                int x0 = static_cast<int>(x0f * scale + offsetX);
-                int y0 = static_cast<int>(y0f * scale + offsetY);
-                int x1 = static_cast<int>(x1f * scale + offsetX);
-                int y1 = static_cast<int>(y1f * scale + offsetY);
+                int x0 = static_cast<int>(x0f * (WINDOW_WIDTH / 2.0f) + offsetX);
+                int y0 = static_cast<int>(y0f * (WINDOW_HEIGHT / 2.0f) + offsetY);
+                int x1 = static_cast<int>(x1f * (WINDOW_WIDTH / 2.0f) + offsetX);
+                int y1 = static_cast<int>(y1f * (WINDOW_HEIGHT / 2.0f) + offsetY);
 
                 DrawLine(x0, y0, x1, y1, WHITE);
             }
         }
-
+		
+		DrawText((std::string("Aspect: ") + std::to_string(WINDOW_WIDTH / (WINDOW_HEIGHT * 1.0f))).c_str(), 190, 150, 20, LIGHTGRAY);
         DrawText("Hello, Raylib!", 190, 200, 20, LIGHTGRAY);
         DrawFPS(10, 10);
         EndDrawing();

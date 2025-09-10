@@ -1,4 +1,5 @@
 #pragma once
+#define PI 3.14159265358979323846f
 
 // Let me try to break this down for myself.
 
@@ -55,4 +56,26 @@ struct Mat4 {
 	// as the Vec4 multiplication but we then repeat the previous multiplication
 	// for every row in our bigger matrix to fill in the rows for our output matrix.
     Mat4 operator*(const Mat4& rhs) const;
+
+	static Mat4 translation(float tx, float ty, float tz = 0.0f);
+
+	static Mat4 rotation(float angleX, float angleY, float angleZ);
+
+	static Mat4 scale(float sx, float sy, float sz = 1.0f);
+
+	static Mat4 compose(float tx, float ty, float tz,
+		float angleX, float angleY, float angleZ,
+		float sx, float sy, float sz);
+	
+	static Mat4 perspective(float fovDeg, float aspect, float near, float far);
 };
+
+// Convert degrees to radians
+inline float deg2rad(float degrees) {
+	return degrees * (PI / 180.0f);
+}
+
+// Convert radians to degrees
+inline float rad2deg(float radians) {
+	return radians * (180.0f / PI);
+}
