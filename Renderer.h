@@ -52,32 +52,11 @@ public:
 			}
 
 			// ======================
-			// 2. Backface Culling
-			// ======================
-			// possibly put this in a buffer?
-			std::vector<TriIdx> visibleTris;
-			for (const auto& tri : obj->mesh.triangles.tris) {
-				Vec3 v0 = obj->mesh.vertices.clipSpacePositions[tri[0]].toVec3();
-				Vec3 v1 = obj->mesh.vertices.clipSpacePositions[tri[1]].toVec3();
-				Vec3 v2 = obj->mesh.vertices.clipSpacePositions[tri[2]].toVec3();
-				Vec3 triNormal = (v1 - v0).cross(v2 - v0).normalized();
-
-				//// calculate our shade value for debugging
-				//Vec3 down = Vec3{ 0,-1.0f,0 };
-				//float shadeAmount = down.dot(triNormal);
-				//shadeAmounts.push_back(shadeAmount);
-
-				Vec3 forward = Vec3{ 0,0,1.0f };
-				//if (triNormal.dot(forward) >= 0) continue; // skip backfaces
-				visibleTris.push_back(tri);
-			}
-
-			// ======================
-			// 3. Frustum Clipping
+			// 2. Frustum Clipping
 			// ======================
 			// Clip triangles against near/far and view frustum
 			std::vector<TriIdx> clippedTris;
-			for (auto& tri : visibleTris) {
+			for (auto& tri : obj->mesh.triangles.tris) {
 				// Clip triangle
 				// Add resulting triangles to clippedTris
 
@@ -111,7 +90,7 @@ public:
 			}
 
 			// ======================
-			// 4. Perspective Divide & Viewport Transform
+			// 3. Perspective Divide & Viewport Transform
 			// ======================
 			for (size_t i = 0; i < obj->mesh.vertices.clipSpacePositions.size(); ++i) {
 				Vec4 ndc = obj->mesh.vertices.clipSpacePositions[i] / obj->mesh.vertices.clipSpacePositions[i].w;
@@ -123,9 +102,25 @@ public:
 			}
 
 			// ======================
+			// 4. Backface Culling
+			// ======================
+			// possibly put this in a buffer?
+			std::vector<TriIdx> visibleTris;
+			for (const auto& tri : clippedTris) {
+				Vec3 v0 = obj->mesh.vertices.screenSpacePositions[tri[0]];
+				Vec3 v1 = obj->mesh.vertices.screenSpacePositions[tri[1]];
+				Vec3 v2 = obj->mesh.vertices.screenSpacePositions[tri[2]];
+				Vec3 triNormal = (v1 - v0).cross(v2 - v0).normalized();
+
+				Vec3 forward = Vec3{ 0,0,1.0f };
+				if (triNormal.dot(forward) >= 0) continue; // skip backfaces
+				visibleTris.push_back(tri);
+			}
+
+			// ======================
 			// 5. Rasterization
 			// ======================
-			for (auto& tri : clippedTris) {
+			for (auto& tri : visibleTris) {
 				// - compute bounding box
 				// - loop over pixels
 				// - compute barycentric coordinates
