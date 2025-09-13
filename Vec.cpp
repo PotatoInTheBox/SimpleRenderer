@@ -1,0 +1,159 @@
+#include "Vec.h"
+#include <cmath>
+
+// default constructor
+Vec4::Vec4() : x(0), y(0), z(0), w(0) {}
+
+// Constructor from individual floats
+Vec4::Vec4(float _x, float _y, float _z, float _w) : x(_x), y(_y), z(_z), w(_w) {}
+
+// Constructor from Vec3 + w
+Vec4::Vec4(const Vec3& v, float _w) : x(v.x), y(v.y), z(v.z), w(_w) {}
+
+Vec4 Vec4::operator+(const Vec4 rhs) const {
+	// I tested it out with Vec4 and Vec4&.
+	// The compiler does not give a fuck about pass by reference/value and will
+	// just do whatever is faster. This means I get to choose for debugging and
+	// writing. The optimized output will be the same regardless.
+	return { x + rhs.x, y + rhs.y, z + rhs.z, w + rhs.w };
+}
+
+Vec4& Vec4::operator+=(const Vec4 rhs) {
+	x += rhs.x; y += rhs.y; z += rhs.z; w += rhs.w;
+	return *this;
+}
+
+Vec4 Vec4::operator-(const Vec4 rhs) const {
+	return { x - rhs.x, y - rhs.y, z - rhs.z, w - rhs.w };
+}
+
+Vec4& Vec4::operator-=(const Vec4 rhs) {
+	x -= rhs.x; y -= rhs.y; z -= rhs.z; w -= rhs.w;
+	return *this;
+}
+
+Vec4 Vec4::operator*(float s) const {
+	return { x * s, y * s, z * s, w * s };
+}
+
+Vec4& Vec4::operator*=(float s) {
+	x *= s; y *= s; z *= s; w *= s;
+	return *this;
+}
+
+float Vec4::dot(const Vec4 rhs) const {
+	return x * rhs.x + y * rhs.y + z * rhs.z; // ignore w
+}
+
+float Vec4::operator*(const Vec4 rhs) const {
+	return x * rhs.x + y * rhs.y + z * rhs.z; // ignore w
+}
+
+Vec4 Vec4::cross(const Vec4 rhs) const {
+	return {
+		y * rhs.z - z * rhs.y,
+		z * rhs.x - x * rhs.z,
+		x * rhs.y - y * rhs.x,
+		0.0f  // w = 0 for direction
+	};
+}
+
+Vec4 Vec4::operator^(const Vec4 rhs) const {
+	return {
+		y * rhs.z - z * rhs.y,
+		z * rhs.x - x * rhs.z,
+		x * rhs.y - y * rhs.x,
+		0.0f  // w = 0 for direction
+	};
+}
+
+Vec4 Vec4::operator/(float s) const {
+	return { x / s, y / s, z / s, w / s };
+}
+
+Vec3 Vec4::toVec3() const {
+	return Vec3{ x, y, z };
+}
+
+// default constructor
+Vec3::Vec3() : x(0), y(0), z(0) {}
+
+// Constructor from individual floats
+Vec3::Vec3(float _x, float _y, float _z) : x(_x), y(_y), z(_z) {}
+
+Vec3::Vec3(float _x, float _y) : x(_x), y(_y) { z = 0.0f; }
+
+// Constructor from Vec2 + z
+Vec3::Vec3(const Vec2& v, float _z) : x(v.x), y(v.y), z(_z) {}
+
+Vec3 Vec3::operator+(const Vec3 rhs) const { return { x + rhs.x, y + rhs.y, z + rhs.z }; }
+Vec3& Vec3::operator+=(const Vec3 rhs) {
+	x += rhs.x; y += rhs.y; z += rhs.z;
+	return *this;
+}
+Vec3 Vec3::operator-(const Vec3 rhs) const { return { x - rhs.x, y - rhs.y, z - rhs.z }; }
+Vec3& Vec3::operator-=(const Vec3 rhs) {
+	x -= rhs.x; y -= rhs.y; z -= rhs.z;
+	return *this;
+}
+Vec3 Vec3::operator*(float s) const { return { x * s, y * s, z * s }; }
+Vec3& Vec3::operator*=(float s) {
+	x *= s; y *= s; z *= s;
+	return *this;
+}
+float Vec3::dot(const Vec3 rhs) const { return x * rhs.x + y * rhs.y + z * rhs.z; }
+float Vec3::operator*(const Vec3 rhs) const { return x * rhs.x + y * rhs.y + z * rhs.z; }
+Vec3 Vec3::cross(const Vec3 rhs) const {
+	return {
+		y * rhs.z - z * rhs.y,
+		z * rhs.x - x * rhs.z,
+		x * rhs.y - y * rhs.x };
+}
+Vec3 Vec3::operator^(const Vec3 rhs) const {
+	return {
+		y * rhs.z - z * rhs.y,
+		z * rhs.x - x * rhs.z,
+		x * rhs.y - y * rhs.x
+	};
+}
+
+Vec3 Vec3::normalized() const {
+	float len = std::sqrt(x * x + y * y + z * z);
+	if (len > 0.0f) {
+		return { x / len, y / len, z / len };
+	}
+	return { 0.0f, 0.0f, 0.0f }; // safe fallback for zero vector
+}
+
+Vec4 Vec3::toVec4() const { return Vec4{ x, y, z, 1.0f }; }
+
+Vec2 Vec2::operator+(const Vec2 rhs) const { return { x + rhs.x, y + rhs.y }; }
+Vec2& Vec2::operator+=(const Vec2 rhs) {
+	x += rhs.x; y += rhs.y;
+	return *this;
+}
+Vec2 Vec2::operator-(const Vec2 rhs) const { return { x - rhs.x, y - rhs.y }; }
+Vec2& Vec2::operator-=(const Vec2 rhs) {
+	x -= rhs.x; y -= rhs.y;
+	return *this;
+}
+Vec2 Vec2::operator*(float s) const { return { x * s, y * s }; }
+Vec2& Vec2::operator*=(float s) {
+	x *= s; y *= s;
+	return *this;
+}
+float Vec2::dot(const Vec2 rhs) const { return x * rhs.x + y * rhs.y; }
+float Vec2::operator*(const Vec2 rhs) const { return x * rhs.x + y * rhs.y; }
+Vec3 Vec2::cross(const Vec2 rhs) const {
+	return {
+		0,
+		0,
+		x * rhs.y - y * rhs.x };
+}
+Vec3 Vec2::operator^(const Vec2 rhs) const {
+	return {
+		0,
+		0,
+		x * rhs.y - y * rhs.x
+	};
+}
