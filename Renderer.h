@@ -77,9 +77,9 @@ public:
 					//	v.z > v.w;
 					//};
 					return
-						-v.w > v.x || v.x > v.w ||
+						/*-v.w > v.x || v.x > v.w ||
 						-v.w > v.y || v.y > v.w ||
-						-v.w > v.z || v.z > v.w ||
+						-v.w > v.z || v.z > v.w ||*/
 						0 > v.w;
 					};
 
