@@ -42,8 +42,8 @@ void drawTriangle(Tri tri, int WINDOW_HEIGHT, int WINDOW_WIDTH, std::vector<floa
 	Vec3 e2 = { v0.x - v2.x, v0.y - v2.y };
 
 	float area = (e0.x * e2.y - e0.y * e2.x);
-	for (int y = boundingBox.yMin; y < boundingBox.yMax; y++) {
-		for (int x = boundingBox.xMin; x < boundingBox.xMax; x++) {
+	for (int y = boundingBox.yMin; y <= boundingBox.yMax; y++) {
+		for (int x = boundingBox.xMin; x <= boundingBox.xMax; x++) {
 			// Compute barycentric coordinates
 			float w0 = ((v1.x - v2.x) * (y - v2.y) - (v1.y - v2.y) * (x - v2.x)) / area;
 			float w1 = ((v2.x - v0.x) * (y - v2.y) - (v2.y - v0.y) * (x - v2.x)) / area;
