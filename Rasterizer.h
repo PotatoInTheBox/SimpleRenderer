@@ -63,7 +63,7 @@ void drawTriangle(Tri tri, int WINDOW_HEIGHT, int WINDOW_WIDTH, std::vector<floa
 
 					// DEBUG draw a the edges of the triangle
 					if (w0 < 0.01 || w1 < 0.01 || w2 < 0.01) {
-						rgbBuffer[index] = GREEN;
+						//rgbBuffer[index] = GREEN;
 					}
 				}
 			}

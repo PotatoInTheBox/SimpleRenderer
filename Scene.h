@@ -1,5 +1,5 @@
 #pragma once
-
+#include <memory>
 #include "SceneObject.h"
 #include "Camera.h"
 
@@ -8,9 +8,10 @@
 
 // Scene containing all objects and a camera
 struct Scene {
-	CustomCamera camera;
-	std::vector<SceneObject*> objects;
+	virtual ~Scene() = default;
 
-	//Scene(std::vector<SceneObject>& objs) : objects(objs) {}
-	// optional: scene-level lights, environment maps, etc.
+	CustomCamera camera;
+	std::vector<std::unique_ptr<SceneObject>> objects;
+
+	virtual void update(float dt) = 0;
 };

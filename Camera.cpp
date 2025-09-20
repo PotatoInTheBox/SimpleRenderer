@@ -31,3 +31,26 @@ Vec3 CustomCamera::getForward() const {
 	Vec3 forward = { 0,0,1 };
 	return rotation * forward;
 }
+
+void CustomCamera::update(float dt) {
+	Vec3 deltaMoveCamera = {};
+	if (IsKeyDown(KEY_D))		deltaMoveCamera.x += cameraSpeed * dt; // right
+	if (IsKeyDown(KEY_A))		deltaMoveCamera.x -= cameraSpeed * dt; // left
+	if (IsKeyDown(KEY_SPACE))   deltaMoveCamera.y += cameraSpeed * dt; // up
+	if (IsKeyDown(KEY_C))		deltaMoveCamera.y -= cameraSpeed * dt; // down
+	if (IsKeyDown(KEY_S))		deltaMoveCamera.z += cameraSpeed * dt; // forward
+	if (IsKeyDown(KEY_W))		deltaMoveCamera.z -= cameraSpeed * dt; // backward
+	if (IsKeyDown(KEY_LEFT_SHIFT)) deltaMoveCamera *= speedupMult;
+	move(deltaMoveCamera);
+
+	if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+		Vec2 mouseDelta = Input::GetMouseDelta();
+
+		yaw -= mouseDelta.x * mouseSensitivity;
+		pitch += mouseDelta.y * mouseSensitivity;
+
+		if (pitch > 89.999f) pitch = 89.999f;  // don't go upsidedown
+		if (pitch < -89.999f) pitch = -89.999f;  // don't go upsidedown
+
+	}
+}

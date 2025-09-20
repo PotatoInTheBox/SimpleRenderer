@@ -22,7 +22,7 @@ public:
 	void render(Scene& scene, RenderTarget& target) {
 
 		// Loop over all objects in the scene
-		for (SceneObject* obj : scene.objects) {
+		for (const auto& obj : scene.objects) {
 
 			// ======================
 			// 1. Vertex Processing
@@ -37,10 +37,10 @@ public:
 			std::vector<float> shadeAmounts;
 
 			// Transform vertices and normals
+			Mat4 viewMatrix = scene.camera.getViewMatrix();
+			Mat4 perspectiveMatrix = Mat4::perspective(90.0f, target.width / (target.height * 1.0f), 0.01f, 1000.0f);
+			Mat4 mvpMatrix = perspectiveMatrix * viewMatrix * obj->modelMatrix;
 			for (size_t i = 0; i < obj->mesh.vertices.positions.size(); ++i) {
-				Mat4 viewMatrix = scene.camera.getViewMatrix();
-				Mat4 perspectiveMatrix = Mat4::perspective(90.0f, target.width / (target.height * 1.0f), 0.01f, 1000.0f);
-				Mat4 mvpMatrix = perspectiveMatrix * viewMatrix * obj->modelMatrix;
 				Vec4 clipPosition = mvpMatrix * Vec4(obj->mesh.vertices.positions[i], 1.0f);
 				obj->mesh.vertices.clipSpacePositions.push_back(clipPosition);
 				if (obj->mesh.vertices.normals.size() > i) {

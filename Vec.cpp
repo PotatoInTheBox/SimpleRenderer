@@ -10,69 +10,12 @@ Vec4::Vec4(float _x, float _y, float _z, float _w) : x(_x), y(_y), z(_z), w(_w) 
 // Constructor from Vec3 + w
 Vec4::Vec4(const Vec3& v, float _w) : x(v.x), y(v.y), z(v.z), w(_w) {}
 
-Vec4 Vec4::operator+(const Vec4 rhs) const {
-	// I tested it out with Vec4 and Vec4&.
-	// The compiler does not give a fuck about pass by reference/value and will
-	// just do whatever is faster. This means I get to choose for debugging and
-	// writing. The optimized output will be the same regardless.
-	return { x + rhs.x, y + rhs.y, z + rhs.z, w + rhs.w };
-}
-
-Vec4& Vec4::operator+=(const Vec4 rhs) {
-	x += rhs.x; y += rhs.y; z += rhs.z; w += rhs.w;
-	return *this;
-}
-
-Vec4 Vec4::operator-(const Vec4 rhs) const {
-	return { x - rhs.x, y - rhs.y, z - rhs.z, w - rhs.w };
-}
-
-Vec4& Vec4::operator-=(const Vec4 rhs) {
-	x -= rhs.x; y -= rhs.y; z -= rhs.z; w -= rhs.w;
-	return *this;
-}
-
-Vec4 Vec4::operator*(float s) const {
-	return { x * s, y * s, z * s, w * s };
-}
-
-Vec4& Vec4::operator*=(float s) {
-	x *= s; y *= s; z *= s; w *= s;
-	return *this;
-}
-
-float Vec4::dot(const Vec4 rhs) const {
-	return x * rhs.x + y * rhs.y + z * rhs.z; // ignore w
-}
-
-float Vec4::operator*(const Vec4 rhs) const {
-	return x * rhs.x + y * rhs.y + z * rhs.z; // ignore w
-}
-
-Vec4 Vec4::cross(const Vec4 rhs) const {
-	return {
-		y * rhs.z - z * rhs.y,
-		z * rhs.x - x * rhs.z,
-		x * rhs.y - y * rhs.x,
-		0.0f  // w = 0 for direction
-	};
-}
-
-Vec4 Vec4::operator^(const Vec4 rhs) const {
-	return {
-		y * rhs.z - z * rhs.y,
-		z * rhs.x - x * rhs.z,
-		x * rhs.y - y * rhs.x,
-		0.0f  // w = 0 for direction
-	};
-}
-
-Vec4 Vec4::operator/(float s) const {
-	return { x / s, y / s, z / s, w / s };
-}
-
 Vec3 Vec4::toVec3() const {
 	return Vec3{ x, y, z };
+}
+
+Vec2 Vec4::toVec2() const {
+	return Vec2{ x, y };
 }
 
 // default constructor
