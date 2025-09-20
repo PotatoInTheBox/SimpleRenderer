@@ -11,13 +11,25 @@ struct TriIdx {
 	const uint32_t& operator[](size_t i) const { return verts[i]; }
 };
 
+struct ModelTriangles {
+	std::vector<TriIdx> vertexTris;
+	std::vector<TriIdx> normalTris;
+	std::vector<TriIdx> uvTris;
+
+	//void add(uint32_t v0, uint32_t v1, uint32_t v2) {
+	//	vertexTris.push_back({ v0, v1, v2 });
+	//}
+
+	//size_t size() const { return vertexTris.size(); }
+};
+
 // A buffer of triangles
 struct TriIdxBuffer {
-	std::vector<TriIdx> tris;
+	std::vector<TriIdx> vertexTris;
 
 	void add(uint32_t v0, uint32_t v1, uint32_t v2) {
-		tris.push_back({ v0, v1, v2 });
+		vertexTris.push_back({ v0, v1, v2 });
 	}
 
-	size_t size() const { return tris.size(); }
+	size_t size() const { return vertexTris.size(); }
 };

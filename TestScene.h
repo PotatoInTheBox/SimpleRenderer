@@ -12,26 +12,31 @@ struct TestScene : Scene {
 
 		// start positions
 
-		Mat4 foxStartMatrix = Mat4::translation(5.0f, 0.0f, 0.0f);
-		Mat4 teapotMatrix = Mat4::translation(0.0f, 0.0f, 0.0f);
-		Mat4 ivanMatrix = Mat4::translation(0.0f, 5.0f, 0.0f);
+		Mat4 foxStartMatrix = Mat4::translation(5.0f, 0.0f, 0.0f); // right
+		Mat4 teapotMatrix = Mat4::translation(0.0f, 0.0f, 0.0f); // middle
+		Mat4 ivanMatrix = Mat4::translation(0.0f, 5.0f, 0.0f); // top
+		Mat4 monkeyMatrix = Mat4::translation(-5.0f, 0.0f, 0.0f); // left
 
 		// meshes
 
 		MyMesh foxMesh = ObjLoader::LoadFromFile("Resources/foxSitting.obj");
 		MyMesh utahTeapotMesh = ObjLoader::LoadFromFile("Resources/utahTeapot.obj");
 		MyMesh ivanMesh = ObjLoader::LoadFromFile("Resources/name.obj");
+		MyMesh monkeyMesh = ObjLoader::LoadFromFile("Resources/blender_monkey.obj");
+		
 
 		// fox SHOULD canonically be on the RIGHT (positive x)
 		std::unique_ptr<SceneObject> foxObject = std::make_unique<SceneObject>("Fox", foxMesh, foxStartMatrix);
 		std::unique_ptr<SceneObject> utahTeapotObject = std::make_unique<SceneObject>("UtahTeapot", utahTeapotMesh, teapotMatrix);
 		std::unique_ptr<SceneObject> ivanObject = std::make_unique<SceneObject>("Ivan", ivanMesh, ivanMatrix);
+		std::unique_ptr<SceneObject> monkeyObject = std::make_unique<SceneObject>("Blender Monkey", monkeyMesh, monkeyMatrix);
 
 		// load objects
 
 		objects.push_back(std::move(foxObject));
 		objects.push_back(std::move(utahTeapotObject));
 		objects.push_back(std::move(ivanObject));
+		objects.push_back(std::move(monkeyObject));
 
 	};
 

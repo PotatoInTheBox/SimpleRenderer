@@ -21,6 +21,9 @@ public:
 	// Main render function
 	void render(Scene& scene, RenderTarget& target) {
 
+		// prepare a buffer we can use to modify the data with
+		VertexBuffers vertexBuffer = VertexBuffers();
+
 		// Loop over all objects in the scene
 		for (const auto& obj : scene.objects) {
 
@@ -29,9 +32,9 @@ public:
 			// ======================
 
 			// clear previous data.
-			obj->mesh.vertices.clipSpacePositions.clear();
-			obj->mesh.vertices.worldSpaceNormals.clear();
-			obj->mesh.vertices.screenSpacePositions.clear();
+			vertexBuffer.clipSpacePositions.clear();
+			vertexBuffer.worldSpaceNormals.clear();
+			vertexBuffer.screenSpacePositions.clear();
 
 			// temp buffer to hold all triangle shade amount
 			std::vector<float> shadeAmounts;
@@ -42,9 +45,9 @@ public:
 			Mat4 mvpMatrix = perspectiveMatrix * viewMatrix * obj->modelMatrix;
 			for (size_t i = 0; i < obj->mesh.vertices.positions.size(); ++i) {
 				Vec4 clipPosition = mvpMatrix * Vec4(obj->mesh.vertices.positions[i], 1.0f);
-				obj->mesh.vertices.clipSpacePositions.push_back(clipPosition);
+				vertexBuffer.clipSpacePositions.push_back(clipPosition);
 				if (obj->mesh.vertices.normals.size() > i) {
-					obj->mesh.vertices.worldSpaceNormals.push_back((
+					vertexBuffer.worldSpaceNormals.push_back((
 						obj->modelMatrix * Vec4(obj->mesh.vertices.normals[i], 0.0f)).toVec3());
 				}
 				// UVs and colors are passed through as-is
@@ -56,16 +59,16 @@ public:
 			// ======================
 			// Clip triangles against near/far and view frustum
 			std::vector<TriIdx> clippedTris;
-			for (auto& tri : obj->mesh.triangles.tris) {
+			for (auto& tri : obj->mesh.triangles.vertexTris) {
 				// Clip triangle
 				// Add resulting triangles to clippedTris
 
 				// for now let's just drop triangles that are outside the frustrum.
 				// we will remove any with a z value that is 0.01 and below;
 
-				Vec4 v0 = obj->mesh.vertices.clipSpacePositions[tri[0]];
-				Vec4 v1 = obj->mesh.vertices.clipSpacePositions[tri[1]];
-				Vec4 v2 = obj->mesh.vertices.clipSpacePositions[tri[2]];
+				Vec4 v0 = vertexBuffer.clipSpacePositions[tri[0]];
+				Vec4 v1 = vertexBuffer.clipSpacePositions[tri[1]];
+				Vec4 v2 = vertexBuffer.clipSpacePositions[tri[2]];
 
 				auto outside = [](const Vec4& v) {
 					//return 
@@ -92,9 +95,9 @@ public:
 			// ======================
 			// 3. Perspective Divide & Viewport Transform
 			// ======================
-			for (size_t i = 0; i < obj->mesh.vertices.clipSpacePositions.size(); ++i) {
-				Vec4 ndc = obj->mesh.vertices.clipSpacePositions[i] / obj->mesh.vertices.clipSpacePositions[i].w;
-				obj->mesh.vertices.screenSpacePositions.push_back(Vec3(
+			for (size_t i = 0; i < vertexBuffer.clipSpacePositions.size(); ++i) {
+				Vec4 ndc = vertexBuffer.clipSpacePositions[i] / vertexBuffer.clipSpacePositions[i].w;
+				vertexBuffer.screenSpacePositions.push_back(Vec3(
 					(ndc.x * 0.5f + 0.5f) * (target.width - 1),
 					target.height - (ndc.y * 0.5f + 0.5f) * (target.height - 1),
 					ndc.z
@@ -107,9 +110,9 @@ public:
 			// possibly put this in a buffer?
 			std::vector<TriIdx> visibleTris;
 			for (const auto& tri : clippedTris) {
-				Vec3 v0 = obj->mesh.vertices.screenSpacePositions[tri[0]];
-				Vec3 v1 = obj->mesh.vertices.screenSpacePositions[tri[1]];
-				Vec3 v2 = obj->mesh.vertices.screenSpacePositions[tri[2]];
+				Vec3 v0 = vertexBuffer.screenSpacePositions[tri[0]];
+				Vec3 v1 = vertexBuffer.screenSpacePositions[tri[1]];
+				Vec3 v2 = vertexBuffer.screenSpacePositions[tri[2]];
 				Vec3 triNormal = (v1 - v0).cross(v2 - v0).normalized();
 
 				Vec3 forward = Vec3{ 0,0,1.0f };
@@ -146,9 +149,9 @@ public:
 				};
 
 				drawTriangle(Tri{
-					obj->mesh.vertices.screenSpacePositions[tri[0]],
-					obj->mesh.vertices.screenSpacePositions[tri[1]],
-					obj->mesh.vertices.screenSpacePositions[tri[2]] },
+					vertexBuffer.screenSpacePositions[tri[0]],
+					vertexBuffer.screenSpacePositions[tri[1]],
+					vertexBuffer.screenSpacePositions[tri[2]] },
 					target.height, target.width, target.zBuffer, target.rgbBuffer, shadedColor);
 			}
 		}

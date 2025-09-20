@@ -7,6 +7,7 @@
 #include <algorithm>
 #include "Vec.h"
 #include "Mesh.h"
+#include "Vertex.h"
 
 // load actual .obj files.
 
@@ -21,7 +22,11 @@ struct ObjLoader {
 		std::vector<Vec3> positions;
 		std::vector<Vec3> normals;
 		std::vector<Vec2> texCoords;
-		std::vector<VertexData> allVertexData;
+		//std::vector<ModelVertices> vertices;
+
+		// Fill Mesh
+		ModelVertices vb;
+		ModelTriangles triangles;
 
 		std::istringstream ss(objText);
 		std::string line;
@@ -57,7 +62,9 @@ struct ObjLoader {
 				std::string token;
 				while (ls >> token) faceElements.push_back(token);
 
-				int64_t startSize = allVertexData.size();
+				std::vector<uint32_t> vertexIndices;
+				std::vector<uint32_t> normalIndices;
+				std::vector<uint32_t> uvIndices;
 
 				// Triangulate polygon if more than 3 vertices
 				for (size_t i = 0; i < faceElements.size(); ++i) {
@@ -68,43 +75,39 @@ struct ObjLoader {
 					int vi = 0, ti = 0, ni = 0;
 					feStream >> vi >> ti >> ni;
 
-					VertexData vert{};
-					if (vi > 0) vert.position = positions[vi - 1];
-					if (ti > 0) vert.texCoord = texCoords[ti - 1];
-					if (ni > 0) vert.normal = normals[ni - 1];
+					if (ni <= 0)
+						vb.hasNormals = false;
+					if (ti <= 0)
+						vb.hasUvs = false;
 
-					// Fan triangulation for polygons with >3 vertices
-					if (i >= 3) {
-						int64_t prev = allVertexData.size() - 1;
-						allVertexData.push_back(allVertexData[startSize]);
-						allVertexData.push_back(allVertexData[prev]);
-					}
+					vertexIndices.push_back(vi - 1);
+					uvIndices.push_back(ti - 1);
+					normalIndices.push_back(ni - 1);
+				}
 
-					allVertexData.push_back(vert);
+				for (size_t i = 0; i < vertexIndices.size() - 2; ++i) {
+					triangles.vertexTris.push_back({ vertexIndices[0], vertexIndices[1 + i], vertexIndices[2 + i] });
+					triangles.normalTris.push_back({ normalIndices[0], normalIndices[1 + i], normalIndices[2 + i] });
+					triangles.uvTris.push_back({ uvIndices[0], uvIndices[1 + i], uvIndices[2 + i] });
 				}
 			}
 		}
 
-		// Fill Mesh
-		VertexBuffers vb;
-		TriIdxBuffer tb;
+		
 
-		// TODO optimization is possible. Quads are always getting duplicated
-		// vertices. We can reuse them though.
-		for (size_t i = 0; i < allVertexData.size(); ++i) {
-			vb.positions.push_back(allVertexData[i].position);
-			vb.normals.push_back(allVertexData[i].normal);
-			vb.uvs.push_back(allVertexData[i].texCoord);
+		vb.positions = positions;
+		if (vb.hasNormals)
+			vb.normals = normals;
+		if (vb.hasUvs)
+			vb.uvs = texCoords;
 
-			if ((i + 1) % 3 == 0) {
-				uint32_t a = static_cast<uint32_t>(i - 2);
-				uint32_t b = static_cast<uint32_t>(i - 1);
-				uint32_t c = static_cast<uint32_t>(i);
-				tb.add(a, b, c);
-			}
-		}
+		// TODO optimization is possible. If we create new vertices they get put
+		// at the end of the list. This means while rendering we may have to jump
+		// to near the end of the list. Which may marginally hurt performance.
+		// If we sort the indices then load the triangle vertices in the order we see them
+		// then we may get a performance increase.
 
-		return MyMesh{ vb, tb };
+		return MyMesh{ vb, triangles };
 	}
 
 	static MyMesh LoadFromFile(const std::string& filename) {
