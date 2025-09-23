@@ -41,7 +41,7 @@ void EngineRun(RenderTarget renderTarget, Scene& scene) {
 
 	while (!WindowShouldClose()) {
 		renderTarget.clear();
-		drawPrettyGradient(renderTarget.height, renderTarget.width, renderTarget.zBuffer, renderTarget.rgbBuffer);
+		//drawPrettyGradient(renderTarget.height, renderTarget.width, renderTarget.zBuffer, renderTarget.rgbBuffer);
 
 		
 		//ClearBackground(BLACK);

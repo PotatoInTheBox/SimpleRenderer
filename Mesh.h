@@ -10,7 +10,7 @@ struct MyMesh {
 	ModelTriangles triangles;
 
 	MyMesh() = default;
-	MyMesh(const ModelVertices& vb, const ModelTriangles& vertexTris)
-		: vertices(vb), triangles(vertexTris) {
+	MyMesh(const ModelVertices& vb, const ModelTriangles& tris)
+		: vertices(vb), triangles(tris) {
 	}
 };

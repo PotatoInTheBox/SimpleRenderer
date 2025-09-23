@@ -2,6 +2,7 @@
 
 #include <vector>
 #include "Vec.h"
+#include "Tri.h"
 
 struct ModelVertices {
 	bool hasNormals = true;
@@ -21,8 +22,9 @@ struct VertexBuffers {
 	std::vector<Vec3> worldSpaceNormals; // relative to world space
 	std::vector<Vec3> screenSpacePositions; // relative to the screen
 	// per-vertex color (can be used for shading, debugging, or final color interpolation)
-	std::vector<Vec4> colors;
+	//std::vector<Vec4> colors;
+	//std::vector<Vec2> uvs;        // texture coordinates (for sampling textures)
 	// do I need it???  optional z-value per vertex; usually not needed unless
 	// you want a vertex-based depth buffer
-	std::vector<float> depths;    
+	std::vector<float> depths;
 };

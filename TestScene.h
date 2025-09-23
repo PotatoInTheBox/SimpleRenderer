@@ -45,3 +45,18 @@ struct TestScene : Scene {
 		camera.update(dt);
 	};
 };
+
+struct HexagonScene : Scene {
+	HexagonScene() {
+		camera.move(Vec3{ 0,0,8 });
+		Mat4 hexagonMatrix = Mat4::translation(0.0f, 0.0f, 0.0f);
+		MyMesh hexagonMesh = ObjLoader::LoadFromFile("Resources/hexagon.obj");
+		std::unique_ptr<SceneObject> hexagonObject = std::make_unique<SceneObject>("Blender Monkey", hexagonMesh, hexagonMatrix);
+		objects.push_back(std::move(hexagonObject));
+	};
+
+	void update(float dt) override {
+
+		camera.update(dt);
+	};
+};

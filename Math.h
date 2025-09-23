@@ -10,7 +10,7 @@ struct Rect {
 };
 
 
-struct Tri {
+struct TriOld {
 	Vec3 v0, v1, v2;      // triangle vertices in screen space (x, y, z)
 	//Vec4 color0, color1, color2; // optional vertex colors
 	//Vec3 normal;          // optional flat normal

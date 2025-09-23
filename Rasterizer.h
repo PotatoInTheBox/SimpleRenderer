@@ -19,7 +19,45 @@ Vec3 ndcToScreen(const Vec3& v, int width, int height) {
 	return { x, y, v.z };
 }
 
-void drawTriangle(Tri tri, int WINDOW_HEIGHT, int WINDOW_WIDTH, std::vector<float>& zBuffer, std::vector<Color>& rgbBuffer, Color color = { 255, 122, 122, 255 }) {
+void drawLine(Vec3 from, Vec3 to, Color color, int WINDOW_HEIGHT, int WINDOW_WIDTH, std::vector<float>& zBuffer, std::vector<Color>& rgbBuffer) {
+	int x0 = static_cast<int>(from.x);
+	int y0 = static_cast<int>(from.y);
+	int x1 = static_cast<int>(to.x);
+	int y1 = static_cast<int>(to.y);
+
+	float z0 = from.z;
+	float z1 = to.z;
+
+	int dx = std::abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+	int dy = -std::abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+	int err = dx + dy;
+
+	while (true) {
+		// If fully out of bounds, stop
+		if ((x0 < 0 && x1 < 0) || (x0 >= WINDOW_WIDTH && x1 >= WINDOW_WIDTH) ||
+			(y0 < 0 && y1 < 0) || (y0 >= WINDOW_HEIGHT && y1 >= WINDOW_HEIGHT)) {
+			break;
+		}
+		// Interpolate depth
+		float t = (dx != 0 ? float(x0 - static_cast<int>(from.x)) / dx : 0.0f);
+		float z = z0 * (1 - t) + z1 * t;
+
+		if (x0 >= 0 && x0 < WINDOW_WIDTH && y0 >= 0 && y0 < WINDOW_HEIGHT) {
+			int idx = y0 * WINDOW_WIDTH + x0;
+			if (z < zBuffer[idx]) {
+				zBuffer[idx] = z;
+				rgbBuffer[idx] = color;
+			}
+		}
+
+		if (x0 == x1 && y0 == y1) break;
+		int e2 = 2 * err;
+		if (e2 >= dy) { err += dy; x0 += sx; }
+		if (e2 <= dx) { err += dx; y0 += sy; }
+	}
+}
+
+void drawTriangle(Tri tri, int WINDOW_HEIGHT, int WINDOW_WIDTH, std::vector<float>& zBuffer, std::vector<Color>& rgbBuffer) {
 
 
 	/*Tri screenTri;
@@ -32,6 +70,10 @@ void drawTriangle(Tri tri, int WINDOW_HEIGHT, int WINDOW_WIDTH, std::vector<floa
 	Vec3 v0 = tri.v0;
 	Vec3 v1 = tri.v1;
 	Vec3 v2 = tri.v2;
+
+	Vec3 n0 = tri.n0; // vertex normals
+	Vec3 n1 = tri.n1;
+	Vec3 n2 = tri.n2;
 
 	// Precompute edge vectors
 	//Vec2 e0 = { v1.x - v0.x, v1.y - v0.y };
@@ -58,12 +100,28 @@ void drawTriangle(Tri tri, int WINDOW_HEIGHT, int WINDOW_WIDTH, std::vector<floa
 				if (z < zBuffer[index]) { // depth test
 					zBuffer[index] = z;
 
-					// Simple flat color (use vertex colors if desired)
-					rgbBuffer[index] = color;
+					if (tri.hasNormals) {
+						// Interpolate normal (affine)
+						Vec3 pixelNormal = (n0 * w0 + n1 * w1 + n2 * w2).normalized();
+						Vec3 lightDir = Vec3{ 0,1,0 }.normalized();
+						float intensity = pixelNormal.dot(lightDir);
+						intensity = std::clamp((intensity + 1) / 2, 0.0f, 1.0f);
+						rgbBuffer[index] = Color{
+							static_cast<unsigned char>(WHITE.r * intensity),
+							static_cast<unsigned char>(WHITE.g * intensity),
+							static_cast<unsigned char>(WHITE.b * intensity),
+							WHITE.a
+						};
+					}
+					else {
+						// Simple flat color (use vertex colors if desired)
+						rgbBuffer[index] = tri.color;
+					}
+					
 
 					// DEBUG draw a the edges of the triangle
 					if (w0 < 0.01 || w1 < 0.01 || w2 < 0.01) {
-						//rgbBuffer[index] = GREEN;
+						rgbBuffer[index] = DARKGREEN;
 					}
 				}
 			}

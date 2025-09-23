@@ -1,20 +1,84 @@
 #pragma once
 
-// Input data for vertex shader.
-struct VertexInput { /* attributes from Mesh */ };
-// Output data for vertex shader.
-struct VertexOutput { /* clipPos, worldPos, normal, color, etc */ };
+#include "Vec.h"
+#include "Mat.h"
+#include "raylib.h"
 
-// possibly input/output data for fragment shader as well?
+// Input per-vertex attributes (from mesh buffers).
+struct VertexInput {
+	Vec3 position;
+	Vec3 normal;
+	Vec2 uv;
+	Color color;  // not sure if I need it yet
+};
 
-// Interface for vertex shader. 
+// Output after vertex shader (interpolated per-fragment).
+struct VertexOutput {
+	Vec4 clipPosition;   // required for rasterization
+	Vec3 worldPosition;  // useful for lighting
+	Vec3 normal;         // in world space
+	Vec2 uv;
+	Color color;  // not sure if I need it yet
+};
+
+// Interface for a vertex shader
 class IVertexShader {
 public:
-	//virtual VertexOutput run(const VertexInput& in, const Mat4& model, const Mat4& view, const Mat4& proj) = 0;
+	virtual VertexOutput run(const VertexInput& in,
+		const Mat4& model,
+		const Mat4& view,
+		const Mat4& proj) = 0;
 };
 
-// Interface for fragment shader. 
+// Example vertex shader
+class BasicVertexShader : public IVertexShader {
+public:
+	VertexOutput run(const VertexInput& in,
+		const Mat4& model,
+		const Mat4& view,
+		const Mat4& proj) override {
+		VertexOutput out;
+		Mat4 mvp = proj * view * model;
+
+		// world position (could be useful for lighting)
+		Vec4 worldPos = model * Vec4(in.position, 1.0f);
+		// clip position, necessary for rasterizing
+		Vec4 clipPos = mvp * Vec4(in.position, 1.0f);
+
+		// convert to world space
+		Vec3 worldNormal = (model * Vec4(in.normal, 0.0f)).toVec3().normalized();
+
+		out.clipPosition = clipPos;
+		out.worldPosition = worldPos.toVec3();
+		out.normal = worldNormal;
+		out.uv = in.uv;
+		out.color = in.color;
+		return out;
+	}
+};
+
+// Fragment shader input = rasterizer-interpolated VertexOutput
+struct FragmentInput {
+	Vec3 worldPosition;
+	Vec3 normal;
+	Vec2 uv;
+	Color color;
+};
+
+// Interface for a fragment shader
 class IFragmentShader {
 public:
-	//virtual Color run(const VertexOutput& frag) = 0;
+	virtual Color run(const FragmentInput& in) = 0;
 };
+
+// Example fragment shader (lambert diffuse)
+//class BasicFragmentShader : public IFragmentShader {
+//public:
+//	Color run(const FragmentInput& in) override {
+//		Vec3 lightDir = normalize(Vec3(0.5f, 1.0f, 0.3f));
+//		float ndotl = std::max(0.0f, dot(in.normal, lightDir));
+//		return in.color * ndotl; // simple shading
+//	}
+//};
+
+// flat shade that only takes in the vertex buffer and uses 

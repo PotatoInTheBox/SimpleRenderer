@@ -1,7 +1,7 @@
 #include "Math.h"
 #include <cmath>
 
-Rect Tri::boundingBox(int screenWidth, int screenHeight) const {
+Rect TriOld::boundingBox(int screenWidth, int screenHeight) const {
 	float minX = fminf(fminf(v0.x, v1.x), v2.x);
 	float minY = fminf(fminf(v0.y, v1.y), v2.y);
 	float maxX = fmaxf(fmaxf(v0.x, v1.x), v2.x);
