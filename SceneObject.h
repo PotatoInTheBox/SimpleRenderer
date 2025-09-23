@@ -3,6 +3,7 @@
 #include "Mesh.h"
 #include "Shader.h"
 #include "Mat.h"
+#include "Texture.h"
 
 struct SceneObject {
 	// name
@@ -17,9 +18,25 @@ struct SceneObject {
 	// shader type
 	// TODO
 
+	// texture
+	MyTexture* texture;
+
 	// construct a scene object
-	SceneObject(const std::string& n, const MyMesh& m, const Mat4& model = Mat4::identity())
-		: name(n), mesh(m), modelMatrix(model) {
+	SceneObject(const std::string& n, const MyMesh& m, const Mat4& model = Mat4::identity(), MyTexture* tex = nullptr)
+		: name(n), mesh(m), modelMatrix(model), texture(tex) {
+		if (tex)
+			texture = tex;
+		else
+			texture = new MyTexture(); // heap-allocated default (1x1 white)
 	}
+
+	// Destructor to free heap memory if we allocated it
+	~SceneObject() {
+		delete texture;
+	}
+
+	// Disable copy to avoid double-delete
+	SceneObject(const SceneObject&) = delete;
+	SceneObject& operator=(const SceneObject&) = delete;
 
 };

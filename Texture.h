@@ -7,12 +7,18 @@
 #include "Vec.h"
 
 
-class Texture {
+class MyTexture {
 public:
-	Texture() = default;
+	// Default texture = 1x1 white
+	MyTexture() {
+		width = 1;
+		height = 1;
+		image.resize(1);
+		image[0] = Vec3(1.0f, 1.0f, 1.0f); // white
+	}
 
 	// Load from raw bytes file
-	Texture(const std::string& filepath) {
+	MyTexture(const std::string& filepath) {
 		loadFromFile(filepath);
 	}
 
@@ -49,6 +55,17 @@ public:
 
 	const Vec3& getPixel(int x, int y) const {
 		return image[y * width + x];
+	}
+
+	Vec3 sampleTexture(float u, float v) const {
+		// Wrap UVs into [0,1)
+		u = u - std::floor(u);
+		v = v - std::floor(v);
+
+		int x = static_cast<int>(std::round(u * getWidth())) % getWidth();
+		int y = static_cast<int>(std::round(v * getHeight())) % getHeight();
+
+		return getPixel(x, y);
 	}
 
 	int getWidth() const { return width; }

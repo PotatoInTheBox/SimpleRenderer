@@ -4,6 +4,8 @@
 #include <vector>
 #include "Tri.h"
 #include "Math.h"
+#include "Shader.h"
+#include "Texture.h"
 
 
 // implement barycentric triangle rasterization to do interpolation, 
@@ -57,7 +59,7 @@ void drawLine(Vec3 from, Vec3 to, Color color, int WINDOW_HEIGHT, int WINDOW_WID
 	}
 }
 
-void drawTriangle(Tri tri, int WINDOW_HEIGHT, int WINDOW_WIDTH, std::vector<float>& zBuffer, std::vector<Color>& rgbBuffer) {
+void drawTriangle(Tri tri, int WINDOW_HEIGHT, int WINDOW_WIDTH, std::vector<float>& zBuffer, std::vector<Color>& rgbBuffer, MyTexture* texture) {
 
 
 	/*Tri screenTri;
@@ -96,9 +98,23 @@ void drawTriangle(Tri tri, int WINDOW_HEIGHT, int WINDOW_WIDTH, std::vector<floa
 				// Interpolate depth
 				float z = w0 * v0.z + w1 * v1.z + w2 * v2.z;
 
+				// interpolate uv
+				float oneOverZ = w0 / tri.depth0 + w1 / tri.depth1 + w2 / tri.depth2;
+				float u = (w0 * tri.uv0.x / tri.depth0 + w1 * tri.uv1.x / tri.depth1 + w2 * tri.uv2.x / tri.depth2) / oneOverZ;
+				float v = (w0 * tri.uv0.y / tri.depth0 + w1 * tri.uv1.y / tri.depth1 + w2 * tri.uv2.y / tri.depth2) / oneOverZ;
+
 				int index = y * WINDOW_WIDTH + x;
 				if (z < zBuffer[index]) { // depth test
 					zBuffer[index] = z;
+
+					Color color = WHITE;
+					if (tri.hasUvs) {
+						Vec3 vecColor = texture->sampleTexture(u, v);
+						color = { static_cast<unsigned char>(vecColor.x * 255),
+							static_cast<unsigned char>(vecColor.y * 255),
+							static_cast<unsigned char>(vecColor.z * 255),
+							color.a };
+					}
 
 					if (tri.hasNormals) {
 						// Interpolate normal (affine)
@@ -107,10 +123,10 @@ void drawTriangle(Tri tri, int WINDOW_HEIGHT, int WINDOW_WIDTH, std::vector<floa
 						float intensity = pixelNormal.dot(lightDir);
 						intensity = std::clamp((intensity + 1) / 2, 0.0f, 1.0f);
 						rgbBuffer[index] = Color{
-							static_cast<unsigned char>(WHITE.r * intensity),
-							static_cast<unsigned char>(WHITE.g * intensity),
-							static_cast<unsigned char>(WHITE.b * intensity),
-							WHITE.a
+							static_cast<unsigned char>(color.r * intensity),
+							static_cast<unsigned char>(color.g * intensity),
+							static_cast<unsigned char>(color.b * intensity),
+							color.a
 						};
 					}
 					else {

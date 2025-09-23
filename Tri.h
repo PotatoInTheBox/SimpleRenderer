@@ -15,8 +15,12 @@ struct Tri {
 	Vec2 uv0;
 	Vec2 uv1;
 	Vec2 uv2;
+	float depth0;
+	float depth1;
+	float depth2;
 	Color color;
 	bool hasNormals = false;
+	bool hasUvs = false;
 
 	Rect boundingBox(int screenWidth, int screenHeight) const {
 		float minX = fminf(fminf(v0.x, v1.x), v2.x);

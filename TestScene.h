@@ -3,6 +3,7 @@
 #include <memory>
 #include "Scene.h"
 #include "ObjLoader.h"
+#include "Texture.h"
 
 struct TestScene : Scene {
 	TestScene() {
@@ -16,6 +17,7 @@ struct TestScene : Scene {
 		Mat4 teapotMatrix = Mat4::translation(0.0f, 0.0f, 0.0f); // middle
 		Mat4 ivanMatrix = Mat4::translation(0.0f, 5.0f, 0.0f); // top
 		Mat4 monkeyMatrix = Mat4::translation(-5.0f, 0.0f, 0.0f); // left
+		Mat4 floorMatrix = Mat4::translation(0.0f, -5.0f, 0.0f); // bottom
 
 		// meshes
 
@@ -23,6 +25,7 @@ struct TestScene : Scene {
 		MyMesh utahTeapotMesh = ObjLoader::LoadFromFile("Resources/utahTeapot.obj");
 		MyMesh ivanMesh = ObjLoader::LoadFromFile("Resources/name.obj");
 		MyMesh monkeyMesh = ObjLoader::LoadFromFile("Resources/blender_monkey.obj");
+		MyMesh floorMesh = ObjLoader::LoadFromFile("Resources/floor.obj");
 		
 
 		// fox SHOULD canonically be on the RIGHT (positive x)
@@ -30,13 +33,21 @@ struct TestScene : Scene {
 		std::unique_ptr<SceneObject> utahTeapotObject = std::make_unique<SceneObject>("UtahTeapot", utahTeapotMesh, teapotMatrix);
 		std::unique_ptr<SceneObject> ivanObject = std::make_unique<SceneObject>("Ivan", ivanMesh, ivanMatrix);
 		std::unique_ptr<SceneObject> monkeyObject = std::make_unique<SceneObject>("Blender Monkey", monkeyMesh, monkeyMatrix);
-
+		std::unique_ptr<SceneObject> floorObject = std::make_unique<SceneObject>("Floor", floorMesh, floorMatrix);
+		
+		// load texture
+		foxObject->texture->loadFromFile("Resources/colMap.bytes");
+		floorObject->texture->loadFromFile("Resources/uvGrid.bytes");
+		
+		
+		
 		// load objects
 
 		objects.push_back(std::move(foxObject));
 		objects.push_back(std::move(utahTeapotObject));
 		objects.push_back(std::move(ivanObject));
 		objects.push_back(std::move(monkeyObject));
+		objects.push_back(std::move(floorObject));
 
 	};
 

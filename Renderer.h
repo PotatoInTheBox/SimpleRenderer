@@ -78,6 +78,12 @@ public:
 			Mat4 viewMatrix = scene.camera.getViewMatrix();
 			Mat4 perspectiveMatrix = Mat4::perspective(90.0f, target.width / (target.height * 1.0f), 0.01f, 1000.0f);
 			Mat4 mvpMatrix = perspectiveMatrix * viewMatrix * obj->modelMatrix;
+
+			// prepare the relevant matrix
+			Mat4 worldMatrix = obj->modelMatrix;
+			Mat4 worldViewMatrix = viewMatrix * obj->modelMatrix;
+			Mat4 worldViewProjectionMatrix = perspectiveMatrix * viewMatrix * obj->modelMatrix;
+
 			BasicVertexShader* shader = new BasicVertexShader();
 			
 			// go through each triangle
@@ -100,14 +106,14 @@ public:
 					size_t normalIdx = tri.normalIdx[o];
 					size_t uvIdx = tri.uvIdx[o];
 
-					VertexInput vertexIn;
+					VertexInput vertexIn = { worldMatrix, worldViewMatrix, worldViewProjectionMatrix };
 					vertexIn.position = obj->mesh.vertices.positions[positionIdx];
 					if (obj->mesh.vertices.hasNormals)
 						vertexIn.normal = obj->mesh.vertices.normals[normalIdx];
 					if (obj->mesh.vertices.hasUvs)
 						vertexIn.uv = obj->mesh.vertices.uvs[uvIdx];
 					vertexIn.color = WHITE;
-					VertexOutput vertexOut = shader->run(vertexIn, obj->modelMatrix, viewMatrix, perspectiveMatrix);
+					VertexOutput vertexOut = shader->run(vertexIn);
 					processedTriangle.vertexOutput[o] = vertexOut;
 				}
 
@@ -152,6 +158,14 @@ public:
 				Vec3 triNormal = (v1 - v0).cross(v2 - v0).normalized();
 
 
+				// temp
+				Vec3 viewV0 = ((viewMatrix * obj->modelMatrix) * v0.toVec4()).toVec3();
+				Vec3 viewV1 = ((viewMatrix * obj->modelMatrix) * v1.toVec4()).toVec3();
+				Vec3 viewV2 = ((viewMatrix * obj->modelMatrix) * v2.toVec4()).toVec3();
+				float z0 = viewV0.z;
+				float z1 = viewV1.z;
+				float z2 = viewV2.z;
+
 				// calculate our shade value for debugging
 				Vec3 down = Vec3{ 0,1.0f,0 };
 				float shadeAmount = (down.dot(triNormal) + 1.0f) / 2.0f;
@@ -166,15 +180,24 @@ public:
 				triScreen.v0 = vv1;
 				triScreen.v1 = vv2;
 				triScreen.v2 = vv3;
+				triScreen.depth0 = z0;
+				triScreen.depth1 = z1;
+				triScreen.depth2 = z2;
 				if (obj->mesh.vertices.hasNormals) {
 					triScreen.n0 = processedTriangle.vertexOutput[0].normal;
 					triScreen.n1 = processedTriangle.vertexOutput[1].normal;
 					triScreen.n2 = processedTriangle.vertexOutput[2].normal;
 					triScreen.hasNormals = true;
 				}
+				if (obj->mesh.vertices.hasUvs) {
+					triScreen.uv0 = processedTriangle.vertexOutput[0].uv;
+					triScreen.uv1 = processedTriangle.vertexOutput[1].uv;
+					triScreen.uv2 = processedTriangle.vertexOutput[2].uv;
+					triScreen.hasUvs = true;
+				}
 				
 				triScreen.color = shadedColor;
-				drawTriangle(triScreen, target.height, target.width, target.zBuffer, target.rgbBuffer);
+				drawTriangle(triScreen, target.height, target.width, target.zBuffer, target.rgbBuffer, obj->texture);
 
 			}
 		}
