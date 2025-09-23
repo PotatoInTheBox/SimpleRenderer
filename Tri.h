@@ -4,6 +4,7 @@
 #include "Vec.h"
 #include "Math.h"
 #include "Shader.h"
+#include "Vertex.h"
 
 struct Tri {
 	Vec3 v0;
@@ -41,6 +42,66 @@ struct Tri {
 // this is the working triangle that will be used to process a triangle per face
 struct ProcessedTriangle {
 	VertexOutput vertexOutput[3];  // 3 vertices after vertex shader
+};
+
+struct ClippedTriangle {
+	ClippedVertex clippedVertex[3];
+	Color color;  // not sure if I need it yet
+
+	std::array<ClippedTriangle, 2> clipZOne(int clipdIdx1, int clipIdx2, float nearClipDistance) {
+		int indexClip = clipdIdx1 ? 0 : clipIdx2 ? 1 : 2;
+		int indexNext = (indexClip + 1) % 3;
+		int indexPrev = (indexClip - 1 + 3) % 3;
+
+		Vec4 pointClipped = clippedVertex[indexClip].clipPosition;
+		Vec4 pointA = clippedVertex[indexNext].clipPosition;
+		Vec4 pointB = clippedVertex[indexPrev].clipPosition;
+
+		// Fraction along triangle edge at which the depth is equal to the clip distance
+		float fracA = (nearClipDistance - pointClipped.z) / (pointA.z - pointClipped.z);
+		float fracB = (nearClipDistance - pointClipped.z) / (pointB.z - pointClipped.z);
+
+		// New triangle points (in view space)
+		ClippedVertex clippedVertexA = clippedVertex[indexClip].lerp(clippedVertex[indexNext], fracA);
+		ClippedVertex clippedVertexB = clippedVertex[indexClip].lerp(clippedVertex[indexPrev], fracB);
+
+		ClippedTriangle newTriangleA;
+		newTriangleA.color = color;
+		newTriangleA.clippedVertex[indexClip] = clippedVertexA;
+		newTriangleA.clippedVertex[indexNext] = clippedVertex[indexNext];
+		newTriangleA.clippedVertex[indexPrev] = clippedVertex[indexPrev];
+
+		ClippedTriangle newTriangleB;
+		newTriangleB.color = color;
+		newTriangleB.clippedVertex[indexClip] = clippedVertexB;
+		newTriangleB.clippedVertex[indexNext] = clippedVertexA;
+		newTriangleB.clippedVertex[indexPrev] = clippedVertex[indexPrev];
+
+		return { newTriangleA, newTriangleB };
+	}
+
+	ClippedTriangle clipZTwo(int clipdIdx1, int clipIdx2, float nearClipDistance) const {
+		int indexNonClip = !clipdIdx1 ? 0 : !clipIdx2 ? 1 : 2;
+		int indexNext = (indexNonClip + 1) % 3;
+		int indexPrev = (indexNonClip - 1 + 3) % 3;
+
+		Vec4 pointNotClipped = clippedVertex[indexNonClip].clipPosition;
+		Vec4 pointA = clippedVertex[indexNext].clipPosition;
+		Vec4 pointB = clippedVertex[indexPrev].clipPosition;
+
+		// Fraction along triangle edge at which the depth is equal to the clip distance
+		float fracA = (nearClipDistance - pointNotClipped.z) / (pointA.z - pointNotClipped.z);
+		float fracB = (nearClipDistance - pointNotClipped.z) / (pointB.z - pointNotClipped.z);
+
+		ClippedTriangle newTriangle;
+		newTriangle.color = color;
+		ClippedVertex clippedVertexA = clippedVertex[indexNonClip].lerp(clippedVertex[indexNext], fracA);
+		ClippedVertex clippedVertexB = clippedVertex[indexNonClip].lerp(clippedVertex[indexPrev], fracB);
+		newTriangle.clippedVertex[indexNonClip] = clippedVertex[indexNonClip];
+		newTriangle.clippedVertex[indexNext] = clippedVertexA;
+		newTriangle.clippedVertex[indexPrev] = clippedVertexB;
+		return newTriangle;
+	}
 };
 
 // A single triangle, storing indices into the vertex buffer

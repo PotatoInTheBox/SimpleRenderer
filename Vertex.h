@@ -2,7 +2,6 @@
 
 #include <vector>
 #include "Vec.h"
-#include "Tri.h"
 
 struct ModelVertices {
 	bool hasNormals = true;
@@ -27,4 +26,25 @@ struct VertexBuffers {
 	// do I need it???  optional z-value per vertex; usually not needed unless
 	// you want a vertex-based depth buffer
 	std::vector<float> depths;
+};
+
+struct ClippedVertex {
+	Vec3 position;  // useful for depth
+	Vec4 clipPosition;   // required for rasterization
+	Vec3 viewPosition;   // only for perspective correction
+	Vec3 worldPosition;  // useful for lighting
+	Vec3 worldNormal;         // in world space
+	Vec2 uv;             // after vertex shader
+
+	// create a new clipped vertex between this one and another one
+	ClippedVertex lerp(ClippedVertex other, float fraction) const {
+		ClippedVertex v;
+		v.position = position.lerp(other.position, fraction);
+		v.clipPosition = clipPosition.lerp(other.clipPosition, fraction);
+		v.viewPosition = viewPosition.lerp(other.viewPosition, fraction);
+		v.worldPosition = worldPosition.lerp(other.worldPosition, fraction);
+		v.worldNormal = worldNormal.lerp(other.worldNormal, fraction);
+		v.uv = uv.lerp(other.uv, fraction);
+		return v;
+	}
 };

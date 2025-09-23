@@ -27,6 +27,7 @@ struct VertexInput {
 // Output after vertex shader (interpolated per-fragment).
 struct VertexOutput {
 	Vec4 clipPosition;   // required for rasterization
+	Vec3 viewPosition;
 	Vec3 worldPosition;  // useful for lighting
 	Vec3 normal;         // in world space
 	Vec2 uv;
@@ -49,11 +50,14 @@ public:
 		Vec4 worldPos = in.worldMatrix * Vec4(in.position, 1.0f);
 		// clip position, necessary for rasterizing
 		Vec4 clipPos = in.worldViewProjectionMatrix * Vec4(in.position, 1.0f);
+		// for perspective correction
+		Vec4 viewPos = in.worldViewMatrix * Vec4(in.position, 1.0f);
 
 		// convert to world space
 		Vec3 worldNormal = (in.worldMatrix * Vec4(in.normal, 0.0f)).toVec3().normalized();
 
 		out.clipPosition = clipPos;
+		out.viewPosition = viewPos.toVec3();
 		out.worldPosition = worldPos.toVec3();
 		out.normal = worldNormal;
 		out.uv = in.uv;

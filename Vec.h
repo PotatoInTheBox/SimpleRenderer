@@ -128,6 +128,8 @@ struct Vec3 {
 	Vec3 cross(const Vec3 rhs) const;
 	Vec3 operator^(const Vec3 rhs) const;
 	Vec3 normalized() const;
+	// linearly interpolate between two vectors and a given fraction to create a new vector
+	Vec3 lerp(const Vec3 rhs, float t) const;
 	// Convert this vector to a Vec4 by adding a w with a value of 1.0f
 	Vec4 toVec4() const;
 };
@@ -145,4 +147,5 @@ struct Vec2 {
 	float operator*(const Vec2 rhs) const;
 	Vec3 cross(const Vec2 rhs) const;
 	Vec3 operator^(const Vec2 rhs) const;
+	Vec2 lerp(const Vec2 rhs, float t) const;
 };

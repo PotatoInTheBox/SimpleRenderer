@@ -68,6 +68,14 @@ Vec3 Vec3::normalized() const {
 	return { 0.0f, 0.0f, 0.0f }; // safe fallback for zero vector
 }
 
+// ======== Lerp ========
+
+	// linearly interpolate between two vectors and a given fraction to create a new vector
+Vec3 Vec3::lerp(const Vec3 rhs, float t) const {
+	// TODO Do not bother clamping yet
+	return *this + (rhs - *this) * t;
+};
+
 Vec4 Vec3::toVec4() const { return Vec4{ x, y, z, 1.0f }; }
 
 Vec2 Vec2::operator+(const Vec2 rhs) const { return { x + rhs.x, y + rhs.y }; }
@@ -100,3 +108,11 @@ Vec3 Vec2::operator^(const Vec2 rhs) const {
 		x * rhs.y - y * rhs.x
 	};
 }
+
+// ======== Lerp ========
+
+// linearly interpolate between two vectors and a given fraction to create a new vector
+Vec2 Vec2::lerp(const Vec2 rhs, float t) const {
+	// TODO Do not bother clamping yet
+	return *this + (rhs - *this) * t;
+};

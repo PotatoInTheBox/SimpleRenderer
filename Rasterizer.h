@@ -98,10 +98,15 @@ void drawTriangle(Tri tri, int WINDOW_HEIGHT, int WINDOW_WIDTH, std::vector<floa
 				// Interpolate depth
 				float z = w0 * v0.z + w1 * v1.z + w2 * v2.z;
 
-				// interpolate uv
-				float oneOverZ = w0 / tri.depth0 + w1 / tri.depth1 + w2 / tri.depth2;
-				float u = (w0 * tri.uv0.x / tri.depth0 + w1 * tri.uv1.x / tri.depth1 + w2 * tri.uv2.x / tri.depth2) / oneOverZ;
-				float v = (w0 * tri.uv0.y / tri.depth0 + w1 * tri.uv1.y / tri.depth1 + w2 * tri.uv2.y / tri.depth2) / oneOverZ;
+				// Perspective-correct barycentrics
+				float denom = (w0 / tri.depth0 + w1 / tri.depth1 + w2 / tri.depth2);
+				float cw0 = (w0 / tri.depth0) / denom;
+				float cw1 = (w1 / tri.depth1) / denom;
+				float cw2 = (w2 / tri.depth2) / denom;
+
+				// Interpolate attributes
+				float u = cw0 * tri.uv0.x + cw1 * tri.uv1.x + cw2 * tri.uv2.x;
+				float v = cw0 * tri.uv0.y + cw1 * tri.uv1.y + cw2 * tri.uv2.y;
 
 				int index = y * WINDOW_WIDTH + x;
 				if (z < zBuffer[index]) { // depth test
@@ -118,7 +123,7 @@ void drawTriangle(Tri tri, int WINDOW_HEIGHT, int WINDOW_WIDTH, std::vector<floa
 
 					if (tri.hasNormals) {
 						// Interpolate normal (affine)
-						Vec3 pixelNormal = (n0 * w0 + n1 * w1 + n2 * w2).normalized();
+						Vec3 pixelNormal = (n0 * cw0 + n1 * cw1 + n2 * cw2).normalized();
 						Vec3 lightDir = Vec3{ 0,1,0 }.normalized();
 						float intensity = pixelNormal.dot(lightDir);
 						intensity = std::clamp((intensity + 1) / 2, 0.0f, 1.0f);
@@ -136,7 +141,7 @@ void drawTriangle(Tri tri, int WINDOW_HEIGHT, int WINDOW_WIDTH, std::vector<floa
 					
 
 					// DEBUG draw a the edges of the triangle
-					if (w0 < 0.01 || w1 < 0.01 || w2 < 0.01) {
+					if (cw0 < 0.01f || cw1 < 0.01f || cw2 < 0.01f) {
 						rgbBuffer[index] = DARKGREEN;
 					}
 				}

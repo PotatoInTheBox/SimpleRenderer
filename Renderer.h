@@ -63,6 +63,82 @@ bool is_backface(Vec3 v0, Vec3 v1, Vec3 v2) {
 		return false;
 }
 
+void renderClippedTriangle(ClippedTriangle clippedTriangle, SceneObject* obj, Scene& scene, RenderTarget& target) {
+
+	Vec3 v0 = clippedTriangle.clippedVertex[0].position;
+	Vec3 v1 = clippedTriangle.clippedVertex[1].position;
+	Vec3 v2 = clippedTriangle.clippedVertex[2].position;
+
+	// =========== PERSPECTIVE DIVIDE ===========
+
+	Vec4 cv1 = clippedTriangle.clippedVertex[0].clipPosition;
+	Vec4 cv2 = clippedTriangle.clippedVertex[1].clipPosition;
+	Vec4 cv3 = clippedTriangle.clippedVertex[2].clipPosition;
+
+	Vec4 ndc1 = cv1 / cv1.w;
+	Vec4 ndc2 = cv2 / cv2.w;
+	Vec4 ndc3 = cv3 / cv3.w;
+
+
+	// =========== VIEWPORT TRANSFORM  ===========
+
+	Vec3 vv1 = viewportTransform(ndc1, target.width, target.height);
+	Vec3 vv2 = viewportTransform(ndc2, target.width, target.height);
+	Vec3 vv3 = viewportTransform(ndc3, target.width, target.height);
+
+
+	// =========== BACKFACE CULL REJECTION ===========
+
+	if (is_backface(vv1, vv2, vv3)) {
+		return;  // move to next triangle (skip this one)
+	}
+
+
+	// =========== RASTERIZATION ===========
+
+	Vec3 viewV0 = clippedTriangle.clippedVertex[0].viewPosition;
+	Vec3 viewV1 = clippedTriangle.clippedVertex[1].viewPosition;
+	Vec3 viewV2 = clippedTriangle.clippedVertex[2].viewPosition;
+	float z0 = viewV0.z;
+	float z1 = viewV1.z;
+	float z2 = viewV2.z;
+
+	Vec3 triNormal = (v1 - v0).cross(v2 - v0).normalized();
+
+	// calculate our shade value for debugging
+	Vec3 down = Vec3{ 0,1.0f,0 };
+	float shadeAmount = (down.dot(triNormal) + 1.0f) / 2.0f;
+
+	Color shadedColor{
+		static_cast<unsigned char>(std::clamp(WHITE.r * shadeAmount, 0.0f, 255.0f)),
+		static_cast<unsigned char>(std::clamp(WHITE.g * shadeAmount, 0.0f, 255.0f)),
+		static_cast<unsigned char>(std::clamp(WHITE.b * shadeAmount, 0.0f, 255.0f)),
+		WHITE.a
+	};
+	Tri triScreen;
+	triScreen.v0 = vv1;
+	triScreen.v1 = vv2;
+	triScreen.v2 = vv3;
+	triScreen.depth0 = z0;
+	triScreen.depth1 = z1;
+	triScreen.depth2 = z2;
+	if (obj->mesh.vertices.hasNormals) {
+		triScreen.n0 = clippedTriangle.clippedVertex[0].worldNormal;
+		triScreen.n1 = clippedTriangle.clippedVertex[1].worldNormal;
+		triScreen.n2 = clippedTriangle.clippedVertex[2].worldNormal;
+		triScreen.hasNormals = true;
+	}
+	if (obj->mesh.vertices.hasUvs) {
+		triScreen.uv0 = clippedTriangle.clippedVertex[0].uv;
+		triScreen.uv1 = clippedTriangle.clippedVertex[1].uv;
+		triScreen.uv2 = clippedTriangle.clippedVertex[2].uv;
+		triScreen.hasUvs = true;
+	}
+
+	triScreen.color = shadedColor;
+	drawTriangle(triScreen, target.height, target.width, target.zBuffer, target.rgbBuffer, obj->texture);
+}
+
 
 class Renderer {
 public:
@@ -92,9 +168,9 @@ public:
 				// =========== PREPARE ===========
 
 				TriIdx tri = obj->mesh.triangles.tris[i];
-				//Vec3 v0 = obj->mesh.vertices.positions[tri[0]];
-				//Vec3 v1 = obj->mesh.vertices.positions[tri[1]];
-				//Vec3 v2 = obj->mesh.vertices.positions[tri[2]];
+				Vec3 v0 = obj->mesh.vertices.positions[tri[0]];
+				Vec3 v1 = obj->mesh.vertices.positions[tri[1]];
+				Vec3 v2 = obj->mesh.vertices.positions[tri[2]];
 				
 				// create our 3 vertex to work with using our vertex shader
 				ProcessedTriangle processedTriangle;
@@ -122,83 +198,51 @@ public:
 
 				Vec4 cv1 = processedTriangle.vertexOutput[0].clipPosition;
 				Vec4 cv2 = processedTriangle.vertexOutput[1].clipPosition;
-				Vec4 cv3 = processedTriangle.vertexOutput[2].clipPosition; 
-				if (is_outside_frustrum(cv1, cv2, cv3)) {
-					continue;  // move to next triangle (skip this one)
-				}
-
-
-				// =========== PERSPECTIVE DIVIDE ===========
-
-				Vec4 ndc1 = cv1 / cv1.w;
-				Vec4 ndc2 = cv2 / cv2.w;
-				Vec4 ndc3 = cv3 / cv3.w;
-
-
-				// =========== VIEWPORT TRANSFORM  ===========
-
-				Vec3 vv1 = viewportTransform(ndc1, target.width, target.height);
-				Vec3 vv2 = viewportTransform(ndc2, target.width, target.height);
-				Vec3 vv3 = viewportTransform(ndc3, target.width, target.height);
-
+				Vec4 cv3 = processedTriangle.vertexOutput[2].clipPosition;
+				float nearClipDistance = 0.01f;
 				
-				// =========== BACKFACE CULL REJECTION ===========
+				// at this point we need to deal with triangles intersecting the camera
+					// we can't draw them until we clip them.
 
-				if (is_backface(vv1, vv2, vv3)) {
-					continue;  // move to next triangle (skip this one)
-				}
+				bool clip1 = cv1.z <= nearClipDistance;
+				bool clip2 = cv2.z <= nearClipDistance;
+				bool clip3 = cv3.z <= nearClipDistance;
+				int clipCount = (clip1 ? 1 : 0) + (clip2 ? 1 : 0) + (clip3 ? 1 : 0);
 
-
-				// =========== RASTERIZATION ===========
-				
-				// Might want to prepare v0, v1, and v2 earlier
-				Vec3 v0 = obj->mesh.vertices.positions[tri[0]];
-				Vec3 v1 = obj->mesh.vertices.positions[tri[1]];
-				Vec3 v2 = obj->mesh.vertices.positions[tri[2]];
-				Vec3 triNormal = (v1 - v0).cross(v2 - v0).normalized();
-
-
-				// temp
-				Vec3 viewV0 = ((viewMatrix * obj->modelMatrix) * v0.toVec4()).toVec3();
-				Vec3 viewV1 = ((viewMatrix * obj->modelMatrix) * v1.toVec4()).toVec3();
-				Vec3 viewV2 = ((viewMatrix * obj->modelMatrix) * v2.toVec4()).toVec3();
-				float z0 = viewV0.z;
-				float z1 = viewV1.z;
-				float z2 = viewV2.z;
-
-				// calculate our shade value for debugging
-				Vec3 down = Vec3{ 0,1.0f,0 };
-				float shadeAmount = (down.dot(triNormal) + 1.0f) / 2.0f;
-
-				Color shadedColor{
-					static_cast<unsigned char>(std::clamp(WHITE.r * shadeAmount, 0.0f, 255.0f)),
-					static_cast<unsigned char>(std::clamp(WHITE.g * shadeAmount, 0.0f, 255.0f)),
-					static_cast<unsigned char>(std::clamp(WHITE.b * shadeAmount, 0.0f, 255.0f)),
-					WHITE.a
-				};
-				Tri triScreen;
-				triScreen.v0 = vv1;
-				triScreen.v1 = vv2;
-				triScreen.v2 = vv3;
-				triScreen.depth0 = z0;
-				triScreen.depth1 = z1;
-				triScreen.depth2 = z2;
-				if (obj->mesh.vertices.hasNormals) {
-					triScreen.n0 = processedTriangle.vertexOutput[0].normal;
-					triScreen.n1 = processedTriangle.vertexOutput[1].normal;
-					triScreen.n2 = processedTriangle.vertexOutput[2].normal;
-					triScreen.hasNormals = true;
-				}
-				if (obj->mesh.vertices.hasUvs) {
-					triScreen.uv0 = processedTriangle.vertexOutput[0].uv;
-					triScreen.uv1 = processedTriangle.vertexOutput[1].uv;
-					triScreen.uv2 = processedTriangle.vertexOutput[2].uv;
-					triScreen.hasUvs = true;
+				ClippedTriangle clippedTriangle;
+				clippedTriangle.clippedVertex[0].position = v0;
+				clippedTriangle.clippedVertex[1].position = v1;
+				clippedTriangle.clippedVertex[2].position = v2;
+				for (size_t i = 0; i < 3; i++)
+				{
+					//clippedTriangle.clippedVertex[i].position = processedTriangle.vertexOutput[i].position;
+					clippedTriangle.clippedVertex[i].clipPosition = processedTriangle.vertexOutput[i].clipPosition;
+					clippedTriangle.clippedVertex[i].viewPosition = processedTriangle.vertexOutput[i].viewPosition;
+					clippedTriangle.clippedVertex[i].worldPosition = processedTriangle.vertexOutput[i].worldPosition;
+					clippedTriangle.clippedVertex[i].worldNormal = processedTriangle.vertexOutput[i].normal;
+					clippedTriangle.clippedVertex[i].uv = processedTriangle.vertexOutput[i].uv;
 				}
 				
-				triScreen.color = shadedColor;
-				drawTriangle(triScreen, target.height, target.width, target.zBuffer, target.rgbBuffer, obj->texture);
+				if (clipCount == 0) {
+					renderClippedTriangle(clippedTriangle, obj.get(), scene, target);
+				}
+				else if (clipCount == 1) {
+					// #1 one vertex is outside the 0 z frustrum. We need to clip it into 2 triangles (quad)
+					std::array<ClippedTriangle, 2> clipped = clippedTriangle.clipZOne(clip1, clip2, nearClipDistance);
+					ClippedTriangle triA = clipped[0];
+					ClippedTriangle triB = clipped[1];
+					renderClippedTriangle(triA, obj.get(), scene, target);
+					renderClippedTriangle(triB, obj.get(), scene, target);
 
+				}
+				else if (clipCount == 2) {
+					// #2 two vertices are outside the 0 z frustrum. We need to clip into 1 triangle
+					ClippedTriangle clipTri2 = clippedTriangle.clipZTwo(clip1, clip2, nearClipDistance);
+					renderClippedTriangle(clipTri2, obj.get(), scene, target);
+				}
+				else {
+					// #3 it is completely out of the frustrum. (we can skip)
+				}
 			}
 		}
 

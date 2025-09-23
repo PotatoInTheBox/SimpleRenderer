@@ -14,7 +14,7 @@ int main() {
 	int WINDOW_WIDTH = 1600; // 1600, 1920, 3840
 	int WINDOW_HEIGHT = 900; // 900, 1080, 2160
 	RenderTarget renderTarget = RenderTarget(WINDOW_WIDTH, WINDOW_HEIGHT);
-	TestScene* scene = new TestScene();
+	Scene* scene = new TestScene();
 	EngineRun(renderTarget, *scene);
 	return 0;
 }
