@@ -14,6 +14,7 @@ Below is an example of the program rendering a scene:
 At the time of writing, the code supports rendering a scene object. The scene
 may only contain 3d object loaded in from a .obj file as well as optional texture
 files loaded in seperately.
+
 ### bulletin description
 * **Rasterizes triangles** (according to barycentric coordinates instead of linescan)
 * **Organizes Vertices into various "spaces"** (including object space, world space, view space, clip space, ndc space?, and screen space)
