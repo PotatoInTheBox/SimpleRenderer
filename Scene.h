@@ -11,7 +11,7 @@ struct Scene {
 	virtual ~Scene() = default;
 
 	CustomCamera camera;
-	std::vector<std::unique_ptr<SceneObject>> objects;
+	std::vector<SceneObject*> objects;
 
 	virtual void update(float dt) = 0;
 };

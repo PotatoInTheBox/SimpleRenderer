@@ -29,8 +29,8 @@ struct VertexBuffers {
 };
 
 struct ClippedVertex {
-	Vec3 position;  // useful for depth
 	Vec4 clipPosition;   // required for rasterization
+	Vec3 position;  // useful for depth
 	Vec3 viewPosition;   // only for perspective correction
 	Vec3 worldPosition;  // useful for lighting
 	Vec3 worldNormal;         // in world space

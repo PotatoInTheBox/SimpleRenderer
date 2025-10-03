@@ -4,6 +4,7 @@
 #include "Scene.h"
 #include "ObjLoader.h"
 #include "Texture.h"
+#include "Shader.h"
 
 struct TestScene : Scene {
 	TestScene() {
@@ -18,7 +19,7 @@ struct TestScene : Scene {
 		Mat4 ivanMatrix = Mat4::translation(0.0f, 5.0f, 0.0f); // top
 		Mat4 monkeyMatrix = Mat4::translation(-5.0f, 0.0f, 0.0f); // left
 		Mat4 floorMatrix = Mat4::translation(0.0f, -5.0f, 0.0f); // bottom
-		Mat4 skyboxMatrix = Mat4::scale(1.0f, 1.0f, 1.0f);
+		Mat4 skyboxMatrix = Mat4::scale(400.0f, 400.0f, 400.0f);
 
 		// meshes
 
@@ -31,28 +32,32 @@ struct TestScene : Scene {
 		
 
 		// fox SHOULD canonically be on the RIGHT (positive x)
-		std::unique_ptr<SceneObject> foxObject = std::make_unique<SceneObject>("Fox", foxMesh, foxStartMatrix);
-		std::unique_ptr<SceneObject> utahTeapotObject = std::make_unique<SceneObject>("UtahTeapot", utahTeapotMesh, teapotMatrix);
-		std::unique_ptr<SceneObject> ivanObject = std::make_unique<SceneObject>("Ivan", ivanMesh, ivanMatrix);
-		std::unique_ptr<SceneObject> monkeyObject = std::make_unique<SceneObject>("Blender Monkey", monkeyMesh, monkeyMatrix);
-		std::unique_ptr<SceneObject> floorObject = std::make_unique<SceneObject>("Floor", floorMesh, floorMatrix);
-		std::unique_ptr<SceneObject> skyboxObject = std::make_unique<SceneObject>("Skybox", skyboxMesh, skyboxMatrix);
+		SceneObject* foxObject = new SceneObject("Fox", foxMesh, foxStartMatrix);
+		SceneObject* utahTeapotObject = new SceneObject("UtahTeapot", utahTeapotMesh, teapotMatrix);
+		SceneObject* ivanObject = new SceneObject("Ivan", ivanMesh, ivanMatrix);
+		SceneObject* monkeyObject = new SceneObject("Blender Monkey", monkeyMesh, monkeyMatrix);
+		SceneObject* floorObject = new SceneObject("Floor", floorMesh, floorMatrix);
+		SceneObject* skyboxObject = new SceneObject("Skybox", skyboxMesh, skyboxMatrix);
 		
 		// load texture
 		foxObject->texture->loadFromFile("Resources/colMap.bytes");
 		floorObject->texture->loadFromFile("Resources/uvGrid.bytes");
-		skyboxObject->texture->loadFromFile("Resources/skyboxTex.bytes");
-		
+		skyboxObject->texture->loadFromFile("Resources/uvGrid.bytes");
+
+		foxObject->shaders.fragmentShader = new TextureFragmentShader();
+		floorObject->shaders.fragmentShader = new TextureFragmentShader();
+		skyboxObject->shaders.fragmentShader = new SkyboxFragmentShader();
+		skyboxObject->shaders.vertexShader = new BasicVertexShader();
 		
 		
 		// load objects
 
-		objects.push_back(std::move(foxObject));
-		objects.push_back(std::move(utahTeapotObject));
-		objects.push_back(std::move(ivanObject));
-		objects.push_back(std::move(monkeyObject));
-		objects.push_back(std::move(floorObject));
-		//objects.push_back(std::move(skyboxObject));
+		objects.push_back(foxObject);
+		objects.push_back(utahTeapotObject);
+		objects.push_back(ivanObject);
+		objects.push_back(monkeyObject);
+		objects.push_back(floorObject);
+		objects.push_back(skyboxObject);
 
 	};
 
@@ -67,8 +72,8 @@ struct HexagonScene : Scene {
 		camera.move(Vec3{ 0,0,8 });
 		Mat4 hexagonMatrix = Mat4::translation(0.0f, 0.0f, 0.0f);
 		MyMesh hexagonMesh = ObjLoader::LoadFromFile("Resources/hexagon.obj");
-		std::unique_ptr<SceneObject> hexagonObject = std::make_unique<SceneObject>("Blender Monkey", hexagonMesh, hexagonMatrix);
-		objects.push_back(std::move(hexagonObject));
+		SceneObject* hexagonObject = new SceneObject("Blender Monkey", hexagonMesh, hexagonMatrix);
+		objects.push_back(hexagonObject);
 	};
 
 	void update(float dt) override {
@@ -82,8 +87,9 @@ struct FloorScene : Scene {
 		camera.move(Vec3{ 0,0,8 });
 		Mat4 floorMatrix = Mat4::translation(0.0f, -5.0f, 0.0f); // bottom
 		MyMesh floorMesh = ObjLoader::LoadFromFile("Resources/floor.obj");
-		std::unique_ptr<SceneObject> floorObject = std::make_unique<SceneObject>("Floor", floorMesh, floorMatrix); floorObject->texture->loadFromFile("Resources/uvGrid.bytes");
-		objects.push_back(std::move(floorObject));
+		SceneObject* floorObject = new SceneObject("Floor", floorMesh, floorMatrix); floorObject->texture->loadFromFile("Resources/uvGrid.bytes");
+		floorObject->shaders.fragmentShader = new TextureFragmentShader();
+		objects.push_back(floorObject);
 	};
 
 	void update(float dt) override {
@@ -94,11 +100,29 @@ struct FloorScene : Scene {
 
 struct SkyBoxScene : Scene {
 	SkyBoxScene() {
-		Mat4 skyboxMatrix = Mat4::scale(10000.0f, 10000.0f, 10000.0f);
+		Mat4 skyboxMatrix = Mat4::scale(900.0f, 900.0f, 900.0f);
 		MyMesh skyboxMesh = ObjLoader::LoadFromFile("Resources/skybox.obj");
-		std::unique_ptr<SceneObject> skyboxObject = std::make_unique<SceneObject>("Skybox", skyboxMesh, skyboxMatrix);
+		SceneObject* skyboxObject = new SceneObject("Skybox", skyboxMesh, skyboxMatrix);
 		skyboxObject->texture->loadFromFile("Resources/skyboxTex.bytes"); 
+		skyboxObject->shaders.fragmentShader = new SkyboxFragmentShader();
 		objects.push_back(std::move(skyboxObject));
+	};
+
+	void update(float dt) override {
+
+		camera.update(dt);
+	};
+};
+
+
+struct GiantFloorScene : Scene {
+	GiantFloorScene() {
+		camera.move(Vec3{ 0,500,8 }); // move the camera up a little (a lot)
+		Mat4 floorMatrix = Mat4::scale(9000.0f, 9000.0f, 9000.0f);
+		MyMesh floorMesh = ObjLoader::LoadFromFile("Resources/floor.obj");
+		SceneObject* floorObject = new SceneObject("Floor", floorMesh, floorMatrix); floorObject->texture->loadFromFile("Resources/uvGrid.bytes");
+		floorObject->shaders.fragmentShader = new TextureFragmentShader();
+		objects.push_back(floorObject);
 	};
 
 	void update(float dt) override {

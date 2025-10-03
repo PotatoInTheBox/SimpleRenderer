@@ -41,6 +41,12 @@ void CustomCamera::update(float dt) {
 	if (IsKeyDown(KEY_S))		deltaMoveCamera.z += cameraSpeed * dt; // forward
 	if (IsKeyDown(KEY_W))		deltaMoveCamera.z -= cameraSpeed * dt; // backward
 	if (IsKeyDown(KEY_LEFT_SHIFT)) deltaMoveCamera *= speedupMult;
+	// scroll input
+	float wheel = GetMouseWheelMove();
+	if (wheel != 0) {
+		speedupMult += wheel * 10.0f; // adjust sensitivity
+		if (speedupMult < 0.1f) speedupMult = 0.1f; // clamp min
+	}
 	move(deltaMoveCamera);
 
 	if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {

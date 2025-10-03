@@ -11,6 +11,7 @@
 #include "Shader.h"
 
 
+int clippedTrianglesRendered = 0;
 
 // Manages the entire pipeline with data going in and out.
 
@@ -29,28 +30,67 @@ Vec3 viewportTransform(Vec4 ndc, int viewportWidth, int viewportHeight) {
 	);
 }
 
-bool is_outside_frustrum(Vec4 v0, Vec4 v1, Vec4 v2) {
+// 0 if it is fully inside, 1 if partially inside, 2 if fully outside
+int is_outside_frustrum(ClippedTriangle triangle) {
+	Vec4 v0 = triangle.clippedVertex[0].clipPosition;
+	Vec4 v1 = triangle.clippedVertex[1].clipPosition;
+	Vec4 v2 = triangle.clippedVertex[2].clipPosition;
 
 	auto outside = [](const Vec4& v) {
-		//return 
-		//	v.x < -v.w || 
-		//	v.x > v.w ||
-		//	v.y < -v.w || 
-		//	v.y > v.w ||
-		//	v.z < 0.01f || 
-		//	v.z > v.w;
-		//};
-		return
-			/*-v.w > v.x || v.x > v.w ||
-			-v.w > v.y || v.y > v.w ||
-			-v.w > v.z || v.z > v.w ||*/
-			0 > v.w;
+		return 
+			v.x < -v.w || 
+			v.x > v.w ||
+			v.y < -v.w || 
+			v.y > v.w ||
+			v.z < -v.w ||
+			v.z > v.w;
 		};
-
-	if (outside(v0) || outside(v1) || outside(v2))
-		return true;
+	if (outside(v0) && outside(v1) && outside(v2))
+		return 2;
+	else if (outside(v0) || outside(v1) || outside(v2))
+		return 1;
 	else
-		return false;
+		return 0;
+}
+
+// Returns true if the triangle's bounding rectangle intersects the clip frustum
+bool bbox_intersects_frustum(const ClippedTriangle& tri) {
+	float minX = std::min({ tri.clippedVertex[0].clipPosition.x,
+						   tri.clippedVertex[1].clipPosition.x,
+						   tri.clippedVertex[2].clipPosition.x });
+	float maxX = std::max({ tri.clippedVertex[0].clipPosition.x,
+						   tri.clippedVertex[1].clipPosition.x,
+						   tri.clippedVertex[2].clipPosition.x });
+	float minY = std::min({ tri.clippedVertex[0].clipPosition.y,
+						   tri.clippedVertex[1].clipPosition.y,
+						   tri.clippedVertex[2].clipPosition.y });
+	float maxY = std::max({ tri.clippedVertex[0].clipPosition.y,
+						   tri.clippedVertex[1].clipPosition.y,
+						   tri.clippedVertex[2].clipPosition.y });
+	float minZ = std::min({ tri.clippedVertex[0].clipPosition.z,
+						   tri.clippedVertex[1].clipPosition.z,
+						   tri.clippedVertex[2].clipPosition.z });
+	float maxZ = std::max({ tri.clippedVertex[0].clipPosition.z,
+						   tri.clippedVertex[1].clipPosition.z,
+						   tri.clippedVertex[2].clipPosition.z });
+
+	// Frustum in clip space: -w <= x,y,z <= w
+	float w0 = tri.clippedVertex[0].clipPosition.w;
+	float w1 = tri.clippedVertex[1].clipPosition.w;
+	float w2 = tri.clippedVertex[2].clipPosition.w;
+	float maxW = std::max({ w0, w1, w2 });
+	float minW = std::min({ w0, w1, w2 });
+
+	// Check for overlap on all axes
+	bool xOverlap = !(maxX < -maxW || minX > maxW);
+	bool yOverlap = !(maxY < -maxW || minY > maxW);
+	bool zOverlap = !(maxZ < -maxW || minZ > maxW);
+
+	return xOverlap && yOverlap && zOverlap;
+}
+
+Vec3 get_tri_face(Vec3 v0, Vec3 v1, Vec3 v2) {
+	return (v1 - v0).cross(v2 - v0).normalized();
 }
 
 bool is_backface(Vec3 v0, Vec3 v1, Vec3 v2) {
@@ -64,6 +104,8 @@ bool is_backface(Vec3 v0, Vec3 v1, Vec3 v2) {
 }
 
 void renderClippedTriangle(ClippedTriangle clippedTriangle, SceneObject* obj, Scene& scene, RenderTarget& target) {
+	clippedTrianglesRendered += 1;
+
 
 	Vec3 v0 = clippedTriangle.clippedVertex[0].position;
 	Vec3 v1 = clippedTriangle.clippedVertex[1].position;
@@ -89,6 +131,10 @@ void renderClippedTriangle(ClippedTriangle clippedTriangle, SceneObject* obj, Sc
 
 	// =========== BACKFACE CULL REJECTION ===========
 
+	Vec3 tri_face_world = get_tri_face(
+		clippedTriangle.clippedVertex[0].worldPosition,
+		clippedTriangle.clippedVertex[1].worldPosition,
+		clippedTriangle.clippedVertex[2].worldPosition);
 	if (is_backface(vv1, vv2, vv3)) {
 		return;  // move to next triangle (skip this one)
 	}
@@ -108,11 +154,19 @@ void renderClippedTriangle(ClippedTriangle clippedTriangle, SceneObject* obj, Sc
 	// calculate our shade value for debugging
 	Vec3 down = Vec3{ 0,1.0f,0 };
 	float shadeAmount = (down.dot(triNormal) + 1.0f) / 2.0f;
+	// bump it up to be between 0.5 and 1 instead of 0 to 1.
+	shadeAmount = (shadeAmount / 2) + 0.5;
 
-	Color shadedColor{
+	/*Color shadedColor{
 		static_cast<unsigned char>(std::clamp(WHITE.r * shadeAmount, 0.0f, 255.0f)),
 		static_cast<unsigned char>(std::clamp(WHITE.g * shadeAmount, 0.0f, 255.0f)),
 		static_cast<unsigned char>(std::clamp(WHITE.b * shadeAmount, 0.0f, 255.0f)),
+		WHITE.a
+	};*/
+	Color shadedColor{
+		static_cast<unsigned char>(std::clamp(clippedTriangle.color.r * shadeAmount, 0.0f, 255.0f)),
+		static_cast<unsigned char>(std::clamp(clippedTriangle.color.g * shadeAmount, 0.0f, 255.0f)),
+		static_cast<unsigned char>(std::clamp(clippedTriangle.color.b * shadeAmount, 0.0f, 255.0f)),
 		WHITE.a
 	};
 	Tri triScreen;
@@ -128,6 +182,13 @@ void renderClippedTriangle(ClippedTriangle clippedTriangle, SceneObject* obj, Sc
 		triScreen.n2 = clippedTriangle.clippedVertex[2].worldNormal;
 		triScreen.hasNormals = true;
 	}
+	else {
+		// generate normals for our pipeline
+		triScreen.n0 = tri_face_world;
+		triScreen.n1 = tri_face_world;
+		triScreen.n2 = tri_face_world;
+		triScreen.hasNormals = true;
+	}
 	if (obj->mesh.vertices.hasUvs) {
 		triScreen.uv0 = clippedTriangle.clippedVertex[0].uv;
 		triScreen.uv1 = clippedTriangle.clippedVertex[1].uv;
@@ -136,7 +197,7 @@ void renderClippedTriangle(ClippedTriangle clippedTriangle, SceneObject* obj, Sc
 	}
 
 	triScreen.color = shadedColor;
-	drawTriangle(triScreen, target.height, target.width, target.zBuffer, target.rgbBuffer, obj->texture);
+	drawTriangle(triScreen, target.height, target.width, target.zBuffer, target.rgbBuffer, obj->texture, obj->shaders.fragmentShader);
 }
 
 
@@ -159,8 +220,6 @@ public:
 			Mat4 worldMatrix = obj->modelMatrix;
 			Mat4 worldViewMatrix = viewMatrix * obj->modelMatrix;
 			Mat4 worldViewProjectionMatrix = perspectiveMatrix * viewMatrix * obj->modelMatrix;
-
-			BasicVertexShader* shader = new BasicVertexShader();
 			
 			// go through each triangle
 			for (size_t i = 0; i < obj->mesh.triangles.tris.size(); i++)
@@ -182,14 +241,14 @@ public:
 					size_t normalIdx = tri.normalIdx[o];
 					size_t uvIdx = tri.uvIdx[o];
 
-					VertexInput vertexIn = { worldMatrix, worldViewMatrix, worldViewProjectionMatrix };
+					VertexInput vertexIn = { worldMatrix, worldViewMatrix, worldViewProjectionMatrix, viewMatrix, perspectiveMatrix };
 					vertexIn.position = obj->mesh.vertices.positions[positionIdx];
 					if (obj->mesh.vertices.hasNormals)
 						vertexIn.normal = obj->mesh.vertices.normals[normalIdx];
 					if (obj->mesh.vertices.hasUvs)
 						vertexIn.uv = obj->mesh.vertices.uvs[uvIdx];
 					vertexIn.color = WHITE;
-					VertexOutput vertexOut = shader->run(vertexIn);
+					VertexOutput vertexOut = (*(obj->shaders.vertexShader)).run(vertexIn);
 					processedTriangle.vertexOutput[o] = vertexOut;
 				}
 
@@ -200,9 +259,16 @@ public:
 				Vec4 cv2 = processedTriangle.vertexOutput[1].clipPosition;
 				Vec4 cv3 = processedTriangle.vertexOutput[2].clipPosition;
 				float nearClipDistance = 0.01f;
+
+				// TODO at some point I want a more generalized check to completely
+				// exclude triangles and objects if they have no chance of intersecting
+				// the frustrum
 				
 				// at this point we need to deal with triangles intersecting the camera
-					// we can't draw them until we clip them.
+				// we can't draw them until we clip them.
+
+				// fuck it. if it needs clipping then call a function to give me
+				// a list of triangles to render
 
 				bool clip1 = cv1.z <= nearClipDistance;
 				bool clip2 = cv2.z <= nearClipDistance;
@@ -222,23 +288,42 @@ public:
 					clippedTriangle.clippedVertex[i].worldNormal = processedTriangle.vertexOutput[i].normal;
 					clippedTriangle.clippedVertex[i].uv = processedTriangle.vertexOutput[i].uv;
 				}
+
+				//int outside_flag = is_outside_frustrum(clippedTriangle);
+
+				//if (outside_flag == 2) {
+				//	if (!bbox_intersects_frustum(clippedTriangle)) {
+				//		continue; // skip this iteration. There is no chance of this
+				//		// triangle intersecting out frustrum.
+				//	}
+				//}
+
+				//if (outside_flag == 0) {
+				//	renderClippedTriangle(clippedTriangle, obj, scene, target);
+				//}
+				//else if (outside_flag == 1 || outside_flag == 2) {
+				//	std::vector<ClippedTriangle> clippedTriangles = clippedTriangle.clipToFrustrum();
+				//	for (auto& tri : clippedTriangles) {
+				//		renderClippedTriangle(tri, obj, scene, target);
+				//	}
+				//}
 				
 				if (clipCount == 0) {
-					renderClippedTriangle(clippedTriangle, obj.get(), scene, target);
+					renderClippedTriangle(clippedTriangle, obj, scene, target);
 				}
 				else if (clipCount == 1) {
 					// #1 one vertex is outside the 0 z frustrum. We need to clip it into 2 triangles (quad)
 					std::array<ClippedTriangle, 2> clipped = clippedTriangle.clipZOne(clip1, clip2, nearClipDistance);
 					ClippedTriangle triA = clipped[0];
 					ClippedTriangle triB = clipped[1];
-					renderClippedTriangle(triA, obj.get(), scene, target);
-					renderClippedTriangle(triB, obj.get(), scene, target);
+					renderClippedTriangle(triA, obj, scene, target);
+					renderClippedTriangle(triB, obj, scene, target);
 
 				}
 				else if (clipCount == 2) {
 					// #2 two vertices are outside the 0 z frustrum. We need to clip into 1 triangle
 					ClippedTriangle clipTri2 = clippedTriangle.clipZTwo(clip1, clip2, nearClipDistance);
-					renderClippedTriangle(clipTri2, obj.get(), scene, target);
+					renderClippedTriangle(clipTri2, obj, scene, target);
 				}
 				else {
 					// #3 it is completely out of the frustrum. (we can skip)

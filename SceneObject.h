@@ -16,7 +16,7 @@ struct SceneObject {
 	Mat4 modelMatrix;
 
 	// shader type
-	// TODO
+	Shaders shaders;
 
 	// texture
 	MyTexture* texture;
@@ -24,10 +24,16 @@ struct SceneObject {
 	// construct a scene object
 	SceneObject(const std::string& n, const MyMesh& m, const Mat4& model = Mat4::identity(), MyTexture* tex = nullptr)
 		: name(n), mesh(m), modelMatrix(model), texture(tex) {
-		if (tex)
+		if (tex) {
 			texture = tex;
-		else
+			shaders.fragmentShader = new TextureFragmentShader();
+			shaders.vertexShader = new BasicVertexShader();
+		}
+		else {
 			texture = new MyTexture(); // heap-allocated default (1x1 white)
+			shaders.fragmentShader = new BasicFragmentShader();
+			shaders.vertexShader = new BasicVertexShader();
+		}
 	}
 
 	// Destructor to free heap memory if we allocated it

@@ -12,6 +12,8 @@
 // depth testing, and anything else we need to figure out to get a pixel
 // created.
 
+int trianglesDrawn = 0;
+
 
 Vec3 ndcToScreen(const Vec3& v, int width, int height) {
 	//float x = (v.x * 0.5f + 0.5f) * (width - 1);
@@ -59,13 +61,15 @@ void drawLine(Vec3 from, Vec3 to, Color color, int WINDOW_HEIGHT, int WINDOW_WID
 	}
 }
 
-void drawTriangle(Tri tri, int WINDOW_HEIGHT, int WINDOW_WIDTH, std::vector<float>& zBuffer, std::vector<Color>& rgbBuffer, MyTexture* texture) {
+void drawTriangle(
+	Tri tri, 
+	int WINDOW_HEIGHT, int WINDOW_WIDTH, 
+	std::vector<float>& zBuffer, 
+	std::vector<Color>& rgbBuffer, 
+	MyTexture* texture,
+	IFragmentShader* fragmentShader) {
 
-
-	/*Tri screenTri;
-	screenTri.v0 = ndcToScreen(tri.v0, WINDOW_WIDTH, WINDOW_HEIGHT);
-	screenTri.v1 = ndcToScreen(tri.v1, WINDOW_WIDTH, WINDOW_HEIGHT);
-	screenTri.v2 = ndcToScreen(tri.v2, WINDOW_WIDTH, WINDOW_HEIGHT);*/
+	trianglesDrawn += 1;
 
 	Rect boundingBox = tri.boundingBox(WINDOW_WIDTH, WINDOW_HEIGHT);
 
@@ -77,13 +81,11 @@ void drawTriangle(Tri tri, int WINDOW_HEIGHT, int WINDOW_WIDTH, std::vector<floa
 	Vec3 n1 = tri.n1;
 	Vec3 n2 = tri.n2;
 
-	// Precompute edge vectors
-	//Vec2 e0 = { v1.x - v0.x, v1.y - v0.y };
-	//Vec2 e1 = { v2.x - v1.x, v2.y - v1.y };
-	//Vec2 e2 = { v0.x - v2.x, v0.y - v2.y };
 	Vec3 e0 = { v1.x - v0.x, v1.y - v0.y };
 	Vec3 e1 = { v2.x - v1.x, v2.y - v1.y };
 	Vec3 e2 = { v0.x - v2.x, v0.y - v2.y };
+
+	FragmentInput fragmentInput;
 
 	float area = (e0.x * e2.y - e0.y * e2.x);
 	for (int y = boundingBox.yMin; y <= boundingBox.yMax; y++) {
@@ -91,7 +93,8 @@ void drawTriangle(Tri tri, int WINDOW_HEIGHT, int WINDOW_WIDTH, std::vector<floa
 			// Compute barycentric coordinates
 			float w0 = ((v1.x - v2.x) * (y - v2.y) - (v1.y - v2.y) * (x - v2.x)) / area;
 			float w1 = ((v2.x - v0.x) * (y - v2.y) - (v2.y - v0.y) * (x - v2.x)) / area;
-			float w2 = 1.0f - w0 - w1;
+			//float w2 = 1.0f - w0 - w1;
+			float w2 = ((v0.x - v1.x) * (y - v1.y) - (v0.y - v1.y) * (x - v1.x)) / area;
 
 			// If pixel is inside the triangle
 			if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
@@ -111,19 +114,19 @@ void drawTriangle(Tri tri, int WINDOW_HEIGHT, int WINDOW_WIDTH, std::vector<floa
 				int index = y * WINDOW_WIDTH + x;
 				if (z < zBuffer[index]) { // depth test
 					zBuffer[index] = z;
-
-					Color color = WHITE;
 					if (tri.hasUvs) {
-						Vec3 vecColor = texture->sampleTexture(u, v);
-						color = { static_cast<unsigned char>(vecColor.x * 255),
-							static_cast<unsigned char>(vecColor.y * 255),
-							static_cast<unsigned char>(vecColor.z * 255),
-							color.a };
-					}
-
-					if (tri.hasNormals) {
-						// Interpolate normal (affine)
+						fragmentInput.worldPosition;  // TODO
 						Vec3 pixelNormal = (n0 * cw0 + n1 * cw1 + n2 * cw2).normalized();
+						fragmentInput.normal = pixelNormal;
+						fragmentInput.uv = {u, v};
+						fragmentInput.texture = texture;
+						fragmentInput.color = tri.color;
+						Color color = fragmentShader->run(fragmentInput);
+						rgbBuffer[index] = color;
+						
+					} else if (tri.hasNormals) {
+						// Interpolate normal (affine)
+						/*Vec3 pixelNormal = (n0 * cw0 + n1 * cw1 + n2 * cw2).normalized();
 						Vec3 lightDir = Vec3{ 0,1,0 }.normalized();
 						float intensity = pixelNormal.dot(lightDir);
 						intensity = std::clamp((intensity + 1) / 2, 0.0f, 1.0f);
@@ -132,7 +135,15 @@ void drawTriangle(Tri tri, int WINDOW_HEIGHT, int WINDOW_WIDTH, std::vector<floa
 							static_cast<unsigned char>(color.g * intensity),
 							static_cast<unsigned char>(color.b * intensity),
 							color.a
-						};
+						};*/
+						fragmentInput.worldPosition;  // TODO
+						Vec3 pixelNormal = (n0 * cw0 + n1 * cw1 + n2 * cw2).normalized();
+						fragmentInput.normal = pixelNormal;
+						//fragmentInput.uv = { u, v };
+						//fragmentInput.texture = texture;
+						fragmentInput.color = tri.color;
+						Color color = fragmentShader->run(fragmentInput);
+						rgbBuffer[index] = color;
 					}
 					else {
 						// Simple flat color (use vertex colors if desired)

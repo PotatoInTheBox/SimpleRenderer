@@ -9,13 +9,42 @@
 #include "TestScene.h"
 #include "Engine.h"
 
+static RenderTarget CreateScaledRenderTarget(int windowWidth, int windowHeight, int pixelScaleMult) {
+	if (windowWidth % pixelScaleMult != 0 || windowHeight % pixelScaleMult != 0) {
+		throw std::runtime_error("Window size must be divisible by pixelScaleMult");
+	}
+	int scaledWidth = windowWidth / pixelScaleMult;
+	int scaledHeight = windowHeight / pixelScaleMult;
+
+	printf("RenderTarget: %dx%d (from %dx%d @ scale %d)\n",
+		scaledWidth, scaledHeight, windowWidth, windowHeight, pixelScaleMult);
+
+	return RenderTarget(scaledWidth, scaledHeight);
+}
 
 int main() {
-	int WINDOW_WIDTH = 1600; // 1600, 1920, 3840
-	int WINDOW_HEIGHT = 900; // 900, 1080, 2160
-	RenderTarget renderTarget = RenderTarget(WINDOW_WIDTH, WINDOW_HEIGHT);
-	Scene* scene = new TestScene();
-	EngineRun(renderTarget, *scene);
+	//int WIDTH_RESOLUTION = 80; // 80, 320, 640, 800, 1600, 1920, 3840
+	//int HEIGHT_RESOLUTION = 60; // 60, 240, 480, 600, 900, 1080, 2160
+	//RenderTarget renderTarget = RenderTarget(WIDTH_RESOLUTION, HEIGHT_RESOLUTION);
+	int TARGET_WINDOW_WIDTH = 2000; // 640, 800, 1600, 1920, 3840
+	int TARGET_WINDOW_HEIGHT = 2000; // 480, 600, 900, 1080, 2160
+	int pixelScaleMult = 8;
+	RenderTarget renderTarget = CreateScaledRenderTarget(
+		TARGET_WINDOW_WIDTH, 
+		TARGET_WINDOW_HEIGHT, 
+		pixelScaleMult);
+	//Scene* scene = new GiantFloorScene();
+	Scene * scene = new TestScene();
+	
+	EngineRun(renderTarget, *scene, pixelScaleMult);
+
+	/*ClippedTriangle tri;
+	tri.clippedVertex[0].clipPosition = { -0.5, -0.5, 0.5, 1 };
+	tri.clippedVertex[1].clipPosition = { 0.5, 0.5, 0.5, 1 };
+	tri.clippedVertex[2].clipPosition = { 2, -2, 0.5, 1 };
+
+	std::vector<ClippedTriangle> result = tri.clipToFrustrum(0.01f);*/
+
 	return 0;
 }
 
